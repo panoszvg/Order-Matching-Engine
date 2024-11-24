@@ -49,9 +49,18 @@ public:
 		this->fulfilled = NOT_FULFILLED;
 	}
 
-	void print() {
-		cout <<"  Order " <<this->identifier <<"\n\t"
-		<<this->security << "  Quantity: " <<this->quantity <<", Fulfilled: " <<((this->fulfilled == NOT_FULFILLED) ? "no" : (this->fulfilled == FULLY_FULFILLED) ? "yes" : ((this->fulfilled == PARTIALLY_FULFILLED) ? "partially" : "cancelled")) <<endl;
+	void print(bool book = false) {
+		if (!book) {
+			cout <<"  Order " <<this->identifier <<"\n\t"
+			<<this->security << "  Quantity: " <<this->quantity <<", Fulfilled: " <<((this->fulfilled == NOT_FULFILLED) ? "no" : (this->fulfilled == FULLY_FULFILLED) ? "yes" : ((this->fulfilled == PARTIALLY_FULFILLED) ? "partially" : "cancelled")) <<endl;
+		}
+		else {
+			cout <<"  Order " <<this->identifier <<"\n\t"
+			<<this->security << "  Quantity: " <<this->total_quantity <<", Fulfilled: " <<((this->fulfilled == NOT_FULFILLED) ? "no" : (this->fulfilled == FULLY_FULFILLED) ? "yes" : ((this->fulfilled == PARTIALLY_FULFILLED) ? "partially" : "cancelled"));
+			if (this->fulfilled == PARTIALLY_FULFILLED)
+				cout <<" (" <<this->total_quantity - quantity <<"/" <<total_quantity <<")";
+			cout <<endl;
+		}
 	}
 
 };

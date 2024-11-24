@@ -42,7 +42,8 @@ int main() {
 	int counter = 0;
 	for (auto& order : book->allOrders) {
 		cout <<++counter <<" ";
-		order.second.print();
+		order.second.print(1);
+		cout <<endl;
 	}
 
 	return 0;
