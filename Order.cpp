@@ -24,7 +24,7 @@ public:
 	}
 
 	void print() {
-		cout <<"  Quantity: " <<this->quantity <<", Fulfilled: " <<((this->fulfilled == NOT_FULFILLED) ? "no" : "partially") <<endl;
+		cout <<"  Quantity: " <<this->quantity <<", Fulfilled: " <<((this->fulfilled == NOT_FULFILLED) ? "no" : (this->fulfilled == FULLY_FULFILLED) ? "yes" : "partially") <<endl;
 	}
 
 };

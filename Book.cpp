@@ -77,7 +77,7 @@ public:
 		it = sellOrders.begin();
 
 		maxIt++;
-		// cout <<"Trying to match order with price: " <<newOrder.price <<" and quantity: " <<newOrder.quantity <<endl;
+		// cout <<"Trying to match buy order with price: " <<newOrder.price <<" and quantity: " <<newOrder.quantity <<endl;
 
 		while (it != sellOrders.end()
 			  && newOrder.fulfilled != newOrder.FULLY_FULFILLED
@@ -104,6 +104,8 @@ public:
 					// buy order is fully fulfilled
 					newOrder.quantity = 0;
 					newOrder.fulfilled = newOrder.FULLY_FULFILLED;
+					// cout <<"B1. newOrder: "; newOrder.print();
+					// cout <<"B1. order: "; order->print();
 				}
 				else {
 					// buy order is partially fulfilled
@@ -116,14 +118,20 @@ public:
 					if (newOrder.quantity == 0) {
 						newOrder.fulfilled = newOrder.FULLY_FULFILLED;
 					}
+					// cout <<"B2. newOrder: "; newOrder.print();
+					// cout <<"B2. order: "; order->print();
 				}
-
+				// cout <<"  "; order->print();
 				if (order->fulfilled == order->FULLY_FULFILLED) {
-					sellOrders.at(it->first).erase(order);
+					order = sellOrders.at(it->first).erase(order);
 				}
 				else {
 					order++;
 				}
+
+				if (newOrder.fulfilled == 2 || newOrder.fulfilled == 3)
+					break;
+
 			}
 			it++;
 		}
@@ -145,7 +153,7 @@ public:
 		it = buyOrders.rbegin();
 
 		minIt++;
-		// cout <<"Trying to match order with price: " <<newOrder.price <<" and quantity: " <<newOrder.quantity <<endl;
+		// cout <<"Trying to match sell order with price: " <<newOrder.price <<" and quantity: " <<newOrder.quantity <<endl;
 
 		while (it != buyOrders.rend()
 			  && newOrder.fulfilled != newOrder.FULLY_FULFILLED
@@ -171,6 +179,8 @@ public:
 					// buy order is fully fulfilled
 					newOrder.quantity = 0;
 					newOrder.fulfilled = newOrder.FULLY_FULFILLED;
+					// cout <<"S1. newOrder: "; newOrder.print();
+					// cout <<"S1. order: "; order->print();
 				}
 				else {
 					// buy order is partially fulfilled
@@ -183,14 +193,19 @@ public:
 					if (newOrder.quantity == 0) {
 						newOrder.fulfilled = newOrder.FULLY_FULFILLED;
 					}
+					// cout <<"S2. newOrder: "; newOrder.print();
+					// cout <<"S2. order: "; order->print();
 				}
-				order->print();
+				// cout <<"  "; order->print();
 				if (order->fulfilled == order->FULLY_FULFILLED) {
-					buyOrders.at(it->first).erase(order);
+					order = buyOrders.at(it->first).erase(order);
 				}
 				else {
 					order++;
 				}
+
+				if (newOrder.fulfilled == 2 || newOrder.fulfilled == 3)
+					break;
 
 			}
 			it++;
@@ -214,9 +229,9 @@ public:
 				sellOrders[order.price].push_back(order);
 			}
 		}
-		printBuyOrders();
-		printSellOrders();
-		cout <<endl;
+		// printBuyOrders();
+		// printSellOrders();
+		// cout <<endl;
 	}
 
 };

@@ -29,11 +29,12 @@ int main() {
 
 		auto newOrder = new Order(security, (sell == "SELL") ? 1 : 0, stod(quantity), stod(price));
 		book->insertOrder(*newOrder);
+		// cout <<"After: " <<security <<" " <<sell <<" " <<price; newOrder->print(); cout <<endl <<endl <<endl;
 
 	}
 
 
-	cout <<"\n\nProgram after ending:\n";
+	cout <<"\n\nBook after ending:\n";
 	book->printBuyOrders();
 	book->printSellOrders();
 	cout <<endl;
