@@ -9,28 +9,46 @@ using namespace std;
 class Book {
 private:
 	const int PRECISION = 1, DECIMALS = 4;
-	std::map<double, std::deque<Order>> buyOrders;
-	std::map<double, std::deque<Order>> sellOrders;
+	map< string, map< double, deque<Order> > > buyOrders;
+	map< string, map< double, deque<Order> > > sellOrders;
 
 public:
 	Book() {}
 
 	void inline cleanUpBook() {
-		auto row = buyOrders.begin();
-		while (row != buyOrders.end()) {
-			if (row->second.empty()) {
-				row = buyOrders.erase(row);
+		map< string, map< double, deque<Order> > >::iterator security;
+		std::map<double, std::deque<Order>>::iterator row;
+		security = buyOrders.begin();
+		while (security != buyOrders.end()) {
+			row = security->second.begin();
+			while (row != security->second.end()) {
+				if (row->second.empty()) {
+					row = security->second.erase(row);
+					continue;
+				}
+				else row++;
+			}
+			if (security->second.empty()) {
+				security = buyOrders.erase(security);
 				continue;
 			}
-			else row++;
+			else security++;
 		}
-		row = sellOrders.begin();
-		while (row != sellOrders.end()) {
-			if (row->second.empty()) {
-				row = sellOrders.erase(row);
+		security = sellOrders.begin();
+		while (security != sellOrders.end()) {
+			row = security->second.begin();
+			while (row != security->second.end()) {
+				if (row->second.empty()) {
+					row = security->second.erase(row);
+					continue;
+				}
+				else row++;
+			}
+			if (security->second.empty()) {
+				security = sellOrders.erase(security);
 				continue;
 			}
-			else row++;
+			else security++;
 		}
 	}
 
@@ -40,10 +58,12 @@ public:
 			return;
 		}
 		cout <<"\n# Sell Orders\n=============\n";
-		for (auto& row : sellOrders) {
-			cout <<row.first <<": " <<endl;
-			for (auto& order : row.second) {
-				order.print();
+		for (auto& securityPair : sellOrders) {
+			for (auto& row : securityPair.second) {
+				cout <<row.first <<": " <<endl;
+				for (auto& order : row.second) {
+					order.print();
+				}
 			}
 		}
 	}
@@ -54,32 +74,34 @@ public:
 			return;
 		}
 		cout <<"\n# Buy Orders\n=============\n";
-		for (auto& row : buyOrders) {
-			cout <<row.first <<": " <<endl;
-			for (auto& order : row.second) {
-				order.print();
+		for (auto& securityPair : buyOrders) {
+			for (auto& row : securityPair.second) {
+				cout <<row.first <<": " <<endl;
+				for (auto& order : row.second) {
+					order.print();
+				}
 			}
 		}
 	}
 
 	void matchBuyOrder(Order &newOrder) {
-		std::map<double, std::deque<Order>>::iterator maxIt;
-		std::map<double, std::deque<Order>>::iterator it;
-		it = sellOrders.begin();
+		map<double, deque<Order>>::iterator maxIt;
+		map<double, deque<Order>>::iterator it;
+		it = sellOrders[newOrder.security].begin();
 		maxIt = it;
-		while (it != sellOrders.end() && it->first <= newOrder.price) {
+		while (it != sellOrders[newOrder.security].end() && it->first <= newOrder.price) {
 			maxIt = it;
 			it++;
 		}
-		if (maxIt == sellOrders.end() || sellOrders.empty() ||  maxIt->second.empty() || it == maxIt) {
+		if (maxIt == sellOrders[newOrder.security].end() || sellOrders.empty() || sellOrders[newOrder.security].empty() ||  maxIt->second.empty() || it == maxIt) {
 			return;
 		}
-		it = sellOrders.begin();
+		it = sellOrders[newOrder.security].begin();
 
 		maxIt++;
 		// cout <<"Trying to match buy order with price: " <<newOrder.price <<" and quantity: " <<newOrder.quantity <<endl;
 
-		while (it != sellOrders.end()
+		while (it != sellOrders[newOrder.security].end()
 			  && newOrder.fulfilled != newOrder.FULLY_FULFILLED
 			  && newOrder.fulfilled != newOrder.CANCELLED
 			  && it != maxIt)
@@ -123,7 +145,7 @@ public:
 				}
 				// cout <<"  "; order->print();
 				if (order->fulfilled == order->FULLY_FULFILLED) {
-					order = sellOrders.at(it->first).erase(order);
+					order = sellOrders[order->security].at(it->first).erase(order);
 				}
 				else {
 					order++;
@@ -139,23 +161,23 @@ public:
 	}
 
 	void matchSellOrder(Order &newOrder) {
-		std::map<double, std::deque<Order>>::reverse_iterator minIt;
-		std::map<double, std::deque<Order>>::reverse_iterator it;
-		it = buyOrders.rbegin();
+		map<double, deque<Order>>::reverse_iterator minIt;
+		map<double, deque<Order>>::reverse_iterator it;
+		it = buyOrders[newOrder.security].rbegin();
 		minIt = it;
-		while (it != buyOrders.rend() && it->first >= newOrder.price) {
+		while (it != buyOrders[newOrder.security].rend() && it->first >= newOrder.price) {
 			minIt = it;
 			it++;
 		}
-		if (minIt == buyOrders.rend() || buyOrders.empty() ||  minIt->second.empty() || it == minIt) {
+		if (minIt == buyOrders[newOrder.security].rend() || buyOrders.empty() || buyOrders[newOrder.security].empty() ||  minIt->second.empty() || it == minIt) {
 			return;
 		}
-		it = buyOrders.rbegin();
+		it = buyOrders[newOrder.security].rbegin();
 
 		minIt++;
 		// cout <<"Trying to match sell order with price: " <<newOrder.price <<" and quantity: " <<newOrder.quantity <<endl;
 
-		while (it != buyOrders.rend()
+		while (it != buyOrders[newOrder.security].rend()
 			  && newOrder.fulfilled != newOrder.FULLY_FULFILLED
 			  && newOrder.fulfilled != newOrder.CANCELLED
 			  && it != minIt)
@@ -198,7 +220,7 @@ public:
 				}
 				// cout <<"  "; order->print();
 				if (order->fulfilled == order->FULLY_FULFILLED) {
-					order = buyOrders.at(it->first).erase(order);
+					order = buyOrders[order->security].at(it->first).erase(order);
 				}
 				else {
 					order++;
@@ -223,10 +245,10 @@ public:
 		matchOrder(order);
 		if (order.fulfilled != 2 && order.fulfilled != 3) {
 			if (order.type == order.BUY) {
-				buyOrders[order.price].push_back(order);
+				buyOrders[order.security][order.price].push_back(order);
 			}
 			else {
-				sellOrders[order.price].push_back(order);
+				sellOrders[order.security][order.price].push_back(order);
 			}
 		}
 		// printBuyOrders();

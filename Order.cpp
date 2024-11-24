@@ -50,8 +50,8 @@ public:
 	}
 
 	void print() {
-		cout <<"  Order " <<this->identifier
-		<<"\n\tQuantity: " <<this->quantity <<", Fulfilled: " <<((this->fulfilled == NOT_FULFILLED) ? "no" : (this->fulfilled == FULLY_FULFILLED) ? "yes" : ((this->fulfilled == PARTIALLY_FULFILLED) ? "partially" : "cancelled")) <<endl;
+		cout <<"  Order " <<this->identifier <<"\n\t"
+		<<this->security << "  Quantity: " <<this->quantity <<", Fulfilled: " <<((this->fulfilled == NOT_FULFILLED) ? "no" : (this->fulfilled == FULLY_FULFILLED) ? "yes" : ((this->fulfilled == PARTIALLY_FULFILLED) ? "partially" : "cancelled")) <<endl;
 	}
 
 };
