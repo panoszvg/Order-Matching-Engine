@@ -39,5 +39,11 @@ int main() {
 	book->printSellOrders();
 	cout <<endl;
 
+	int counter = 0;
+	for (auto& order : book->allOrders) {
+		cout <<++counter <<" ";
+		order.second.print();
+	}
+
 	return 0;
 }

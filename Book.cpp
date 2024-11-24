@@ -13,6 +13,7 @@ private:
 	map< string, map< double, deque<Order> > > sellOrders;
 
 public:
+	map<string, Order> allOrders;
 	Book() {}
 
 	void inline cleanUpBook() {
@@ -116,7 +117,7 @@ public:
 			auto order = it->second.begin();
 
 			while (order != it->second.end()) {
-				// cout <<"Checking sell order with price: " <<order->price <<", quantity: " <<order->quantity <<endl;
+				// cout <<"Checking buy order with price: " <<order->price <<", quantity: " <<order->quantity <<endl;
 				int buyQuantity = newOrder.quantity;
 				int sellQuantity = order->quantity;
 				if (buyQuantity < sellQuantity) {
@@ -126,8 +127,6 @@ public:
 					// buy order is fully fulfilled
 					newOrder.quantity = 0;
 					newOrder.fulfilled = newOrder.FULLY_FULFILLED;
-					// cout <<"B1. newOrder: "; newOrder.print();
-					// cout <<"B1. order: "; order->print();
 				}
 				else {
 					// buy order is partially fulfilled
@@ -140,10 +139,9 @@ public:
 					if (newOrder.quantity == 0) {
 						newOrder.fulfilled = newOrder.FULLY_FULFILLED;
 					}
-					// cout <<"B2. newOrder: "; newOrder.print();
-					// cout <<"B2. order: "; order->print();
 				}
-				// cout <<"  "; order->print();
+				allOrders.at(order->identifier).quantity = order->quantity;
+				allOrders.at(order->identifier).fulfilled = order->fulfilled;
 				if (order->fulfilled == order->FULLY_FULFILLED) {
 					order = sellOrders[order->security].at(it->first).erase(order);
 				}
@@ -191,7 +189,7 @@ public:
 			auto order = it->second.begin();
 
 			while (order != it->second.end()) {
-				// cout <<"Checking buy order with price: " <<order->price <<", quantity: " <<order->quantity <<endl;
+				// cout <<"Checking sell order with price: " <<order->price <<", quantity: " <<order->quantity <<endl;
 				int buyQuantity = newOrder.quantity;
 				int sellQuantity = order->quantity;
 				if (buyQuantity < sellQuantity) {
@@ -199,26 +197,23 @@ public:
 					order->quantity -= buyQuantity;
 					order->fulfilled = order->PARTIALLY_FULFILLED;
 					// buy order is fully fulfilled
-					newOrder.quantity = 0;
+					newOrder.quantity = 0.0;
 					newOrder.fulfilled = newOrder.FULLY_FULFILLED;
-					// cout <<"S1. newOrder: "; newOrder.print();
-					// cout <<"S1. order: "; order->print();
 				}
 				else {
 					// buy order is partially fulfilled
 					newOrder.quantity -= sellQuantity;
 					newOrder.fulfilled = newOrder.PARTIALLY_FULFILLED;
 					// sell order is fully fulfilled and removed
-					order->quantity = 0;
+					order->quantity = 0.0;
 					order->fulfilled = order->FULLY_FULFILLED;
 
-					if (newOrder.quantity == 0) {
+					if (newOrder.quantity == 0.0) {
 						newOrder.fulfilled = newOrder.FULLY_FULFILLED;
 					}
-					// cout <<"S2. newOrder: "; newOrder.print();
-					// cout <<"S2. order: "; order->print();
 				}
-				// cout <<"  "; order->print();
+				allOrders.at(order->identifier).quantity = order->quantity;
+				allOrders.at(order->identifier).fulfilled = order->fulfilled;
 				if (order->fulfilled == order->FULLY_FULFILLED) {
 					order = buyOrders[order->security].at(it->first).erase(order);
 				}
@@ -251,9 +246,7 @@ public:
 				sellOrders[order.security][order.price].push_back(order);
 			}
 		}
-		// printBuyOrders();
-		// printSellOrders();
-		// cout <<endl;
+		allOrders.insert({order.identifier, order});
 	}
 
 };
