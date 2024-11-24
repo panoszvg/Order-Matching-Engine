@@ -34,7 +34,7 @@ int main() {
 	}
 
 
-	cout <<"\n\nBook after ending:\n";
+	cout <<"\nBook after ending:\n";
 	book->printBuyOrders();
 	book->printSellOrders();
 	cout <<endl;
