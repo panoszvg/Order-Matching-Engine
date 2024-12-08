@@ -9,16 +9,16 @@ using namespace std;
 class Book {
 private:
 	const int PRECISION = 1, DECIMALS = 4;
-	map< string, map< double, deque<Order> > > buyOrders;
-	map< string, map< double, deque<Order> > > sellOrders;
+	map< string, map< double, deque<Order*> > > buyOrders;
+	map< string, map< double, deque<Order*> > > sellOrders;
 
 public:
-	map<string, Order> allOrders;
+	map<string, Order*> allOrders;
 	Book() {}
 
 	void inline cleanUpBook() {
-		map< string, map< double, deque<Order> > >::iterator security;
-		std::map<double, std::deque<Order>>::iterator row;
+		map< string, map< double, deque<Order*> > >::iterator security;
+		std::map<double, std::deque<Order*>>::iterator row;
 		security = buyOrders.begin();
 		while (security != buyOrders.end()) {
 			row = security->second.begin();
@@ -63,7 +63,7 @@ public:
 			for (auto& row : securityPair.second) {
 				cout <<row.first <<": " <<endl;
 				for (auto& order : row.second) {
-					order.print();
+					order->print();
 				}
 			}
 		}
@@ -79,15 +79,15 @@ public:
 			for (auto& row : securityPair.second) {
 				cout <<row.first <<": " <<endl;
 				for (auto& order : row.second) {
-					order.print();
+					order->print();
 				}
 			}
 		}
 	}
 
 	void matchBuyOrder(Order &newOrder) {
-		map<double, deque<Order>>::iterator maxIt;
-		map<double, deque<Order>>::iterator it;
+		map<double, deque<Order*>>::iterator maxIt;
+		map<double, deque<Order*>>::iterator it;
 		it = sellOrders[newOrder.security].begin();
 		maxIt = it;
 		while (it != sellOrders[newOrder.security].end() && it->first <= newOrder.price) {
@@ -114,9 +114,10 @@ public:
 
 
 			// get all orders with current value
-			auto order = it->second.begin();
+			auto order_it = it->second.begin();
+			auto order = *order_it;
 
-			while (order != it->second.end()) {
+			while (order_it != it->second.end()) {
 				// cout <<"Checking buy order with price: " <<order->price <<", quantity: " <<order->quantity <<endl;
 				int buyQuantity = newOrder.quantity;
 				int sellQuantity = order->quantity;
@@ -140,13 +141,11 @@ public:
 						newOrder.fulfilled = newOrder.FULLY_FULFILLED;
 					}
 				}
-				allOrders.at(order->identifier).quantity = order->quantity;
-				allOrders.at(order->identifier).fulfilled = order->fulfilled;
 				if (order->fulfilled == order->FULLY_FULFILLED) {
-					order = sellOrders[order->security].at(it->first).erase(order);
+					order_it = sellOrders[order->security].at(it->first).erase(order_it);
 				}
 				else {
-					order++;
+					order_it++;
 				}
 
 				if (newOrder.fulfilled == 2 || newOrder.fulfilled == 3)
@@ -159,8 +158,8 @@ public:
 	}
 
 	void matchSellOrder(Order &newOrder) {
-		map<double, deque<Order>>::reverse_iterator minIt;
-		map<double, deque<Order>>::reverse_iterator it;
+		map<double, deque<Order*>>::reverse_iterator minIt;
+		map<double, deque<Order*>>::reverse_iterator it;
 		it = buyOrders[newOrder.security].rbegin();
 		minIt = it;
 		while (it != buyOrders[newOrder.security].rend() && it->first >= newOrder.price) {
@@ -186,9 +185,10 @@ public:
 			}
 
 			// get all orders with current value
-			auto order = it->second.begin();
+			auto order_it = it->second.begin();
+			auto order = *order_it;
 
-			while (order != it->second.end()) {
+			while (order_it != it->second.end()) {
 				// cout <<"Checking sell order with price: " <<order->price <<", quantity: " <<order->quantity <<endl;
 				int buyQuantity = newOrder.quantity;
 				int sellQuantity = order->quantity;
@@ -212,13 +212,12 @@ public:
 						newOrder.fulfilled = newOrder.FULLY_FULFILLED;
 					}
 				}
-				allOrders.at(order->identifier).quantity = order->quantity;
-				allOrders.at(order->identifier).fulfilled = order->fulfilled;
+
 				if (order->fulfilled == order->FULLY_FULFILLED) {
-					order = buyOrders[order->security].at(it->first).erase(order);
+					order_it = buyOrders[order->security].at(it->first).erase(order_it);
 				}
 				else {
-					order++;
+					order_it++;
 				}
 
 				if (newOrder.fulfilled == 2 || newOrder.fulfilled == 3)
@@ -236,17 +235,18 @@ public:
 		else matchSellOrder(order);
 	}
 
-	void insertOrder(Order order) {
+	void insertOrder(Order& order) {
 		matchOrder(order);
+		Order *newOrder = &order;
 		if (order.fulfilled != 2 && order.fulfilled != 3) {
 			if (order.type == order.BUY) {
-				buyOrders[order.security][order.price].push_back(order);
+				buyOrders[order.security][order.price].push_back(newOrder);
 			}
 			else {
-				sellOrders[order.security][order.price].push_back(order);
+				sellOrders[order.security][order.price].push_back(newOrder);
 			}
 		}
-		allOrders.insert({order.identifier, order});
+		allOrders.insert({newOrder->identifier, newOrder});
 	}
 
 };

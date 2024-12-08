@@ -27,10 +27,8 @@ int main() {
 		getline(ss,quantity, ',');
 		getline(ss,price, ',');
 
-		auto newOrder = new Order(security, (sell == "SELL") ? 1 : 0, stod(quantity), stod(price));
+		Order *newOrder = new Order(security, (sell == "SELL") ? 1 : 0, stod(quantity), stod(price));
 		book->insertOrder(*newOrder);
-		// cout <<"After: " <<security <<" " <<sell <<" " <<price; newOrder->print(); cout <<endl <<endl <<endl;
-
 	}
 
 
@@ -39,12 +37,12 @@ int main() {
 	book->printSellOrders();
 	cout <<endl;
 
-	int counter = 0;
-	for (auto& order : book->allOrders) {
-		cout <<++counter <<" ";
-		order.second.print(1);
-		cout <<endl;
-	}
+	// int counter = 0;
+	// for (auto& order : book->allOrders) {
+	// 	cout <<++counter <<" ";
+	// 	order.second->print(1);
+	// 	cout <<endl;
+	// }
 
 	return 0;
 }
