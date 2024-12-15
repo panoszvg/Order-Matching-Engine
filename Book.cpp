@@ -1,55 +1,52 @@
 #include "Order.cpp"
+#include "Security.cpp"
 #include <string>
 #include <map>
 #include <vector>
 #include <deque>
+#include <queue>
 #include <iostream>
 using namespace std;
 
 class Book {
 private:
 	const int PRECISION = 1, DECIMALS = 4;
-	map< string, map< double, deque<Order*> > > buyOrders;
-	map< string, map< double, deque<Order*> > > sellOrders;
+	class CompareBuy {
+	public:
+		bool operator() (Order* o1, Order* o2) {
+			return (o1->price > o2->price) ? o1 : o2;
+		}
+	};
+	class CompareSell {
+	public:
+		bool operator() (Order* o1, Order* o2) {
+			return (o1->price > o2->price) ? o1 : o2;
+		}
+	};
+
+	class BuyBucket {
+	public:
+		priority_queue<Order*, deque<Order*>, CompareBuy> bucket;
+		double total_quantity = 0;
+	};
+
+	class SellBucket {
+	public:
+		priority_queue<Order*, deque<Order*>, CompareSell> bucket;
+		double total_quantity = 0;
+	};
+
+	map< string, map< double, BuyBucket* > > buyOrders;
+	map< string, map< double, SellBucket* > > sellOrders;
+	map<string, Security*> securities;
 
 public:
 	map<string, Order*> allOrders;
 	Book() {}
 
-	void inline cleanUpBook() {
-		map< string, map< double, deque<Order*> > >::iterator security;
-		std::map<double, std::deque<Order*>>::iterator row;
-		security = buyOrders.begin();
-		while (security != buyOrders.end()) {
-			row = security->second.begin();
-			while (row != security->second.end()) {
-				if (row->second.empty()) {
-					row = security->second.erase(row);
-					continue;
-				}
-				else row++;
-			}
-			if (security->second.empty()) {
-				security = buyOrders.erase(security);
-				continue;
-			}
-			else security++;
-		}
-		security = sellOrders.begin();
-		while (security != sellOrders.end()) {
-			row = security->second.begin();
-			while (row != security->second.end()) {
-				if (row->second.empty()) {
-					row = security->second.erase(row);
-					continue;
-				}
-				else row++;
-			}
-			if (security->second.empty()) {
-				security = sellOrders.erase(security);
-				continue;
-			}
-			else security++;
+	void addSecurities(vector<Security *>& securities) {
+		for (auto& security : securities) {
+			this->securities[security->getName()] = security;
 		}
 	}
 
@@ -59,12 +56,9 @@ public:
 			return;
 		}
 		cout <<"\n# Sell Orders\n=============\n";
-		for (auto& securityPair : sellOrders) {
-			for (auto& row : securityPair.second) {
-				cout <<row.first <<": " <<endl;
-				for (auto& order : row.second) {
-					order->print();
-				}
+		for (auto& [securityString, order] : allOrders) {
+			if (order->type == order->SELL && (order->fulfilled == order->NOT_FULFILLED || order->fulfilled == order->PARTIALLY_FULFILLED)) {
+				order->print();
 			}
 		}
 	}
@@ -75,26 +69,23 @@ public:
 			return;
 		}
 		cout <<"\n# Buy Orders\n=============\n";
-		for (auto& securityPair : buyOrders) {
-			for (auto& row : securityPair.second) {
-				cout <<row.first <<": " <<endl;
-				for (auto& order : row.second) {
-					order->print();
-				}
+		for (auto& [securityString, order] : allOrders) {
+			if (order->type == order->BUY && (order->fulfilled == order->NOT_FULFILLED || order->fulfilled == order->PARTIALLY_FULFILLED)) {
+				order->print();
 			}
 		}
 	}
 
 	void matchBuyOrder(Order &newOrder) {
-		map<double, deque<Order*>>::iterator maxIt;
-		map<double, deque<Order*>>::iterator it;
+		map< double, SellBucket* >::iterator maxIt;
+		map< double, SellBucket* >::iterator it;
 		it = sellOrders[newOrder.security].begin();
 		maxIt = it;
 		while (it != sellOrders[newOrder.security].end() && it->first <= newOrder.price) {
 			maxIt = it;
 			it++;
 		}
-		if (maxIt == sellOrders[newOrder.security].end() || sellOrders.empty() || sellOrders[newOrder.security].empty() ||  maxIt->second.empty() || it == maxIt) {
+		if (maxIt == sellOrders[newOrder.security].end() || sellOrders.empty() || it == maxIt) {
 			return;
 		}
 		it = sellOrders[newOrder.security].begin();
@@ -107,20 +98,20 @@ public:
 			  && newOrder.fulfilled != newOrder.CANCELLED
 			  && it != maxIt)
 		{
-			if (it->second.empty()) {
+			if (it->second->bucket.empty()) {
 				it++;
 				continue;
 			}
 
+			SellBucket *bucketContainer = it->second;
+			double buyQuantity = newOrder.quantity;
 
-			// get all orders with current value
-			auto order_it = it->second.begin();
-			auto order = *order_it;
-
-			while (order_it != it->second.end()) {
-				// cout <<"Checking buy order with price: " <<order->price <<", quantity: " <<order->quantity <<endl;
-				int buyQuantity = newOrder.quantity;
-				int sellQuantity = order->quantity;
+			while (!bucketContainer->bucket.empty()
+				  && newOrder.fulfilled != newOrder.FULLY_FULFILLED
+				  && newOrder.fulfilled != newOrder.CANCELLED)
+			{
+				auto order = bucketContainer->bucket.top();
+				double sellQuantity = order->quantity;
 				if (buyQuantity < sellQuantity) {
 					// sell order is partially fulfilled
 					order->quantity -= buyQuantity;
@@ -136,16 +127,13 @@ public:
 					// sell order is fully fulfilled and removed
 					order->quantity = 0;
 					order->fulfilled = order->FULLY_FULFILLED;
-
-					if (newOrder.quantity == 0) {
-						newOrder.fulfilled = newOrder.FULLY_FULFILLED;
-					}
 				}
+				if (newOrder.quantity == 0) {
+					newOrder.fulfilled = newOrder.FULLY_FULFILLED;
+				}
+				// if sell order is fulfilled, remove
 				if (order->fulfilled == order->FULLY_FULFILLED) {
-					order_it = sellOrders[order->security].at(it->first).erase(order_it);
-				}
-				else {
-					order_it++;
+					bucketContainer->bucket.pop();
 				}
 
 				if (newOrder.fulfilled == 2 || newOrder.fulfilled == 3)
@@ -154,19 +142,18 @@ public:
 			}
 			it++;
 		}
-		cleanUpBook();
 	}
 
 	void matchSellOrder(Order &newOrder) {
-		map<double, deque<Order*>>::reverse_iterator minIt;
-		map<double, deque<Order*>>::reverse_iterator it;
+		map< double, BuyBucket* >::reverse_iterator minIt;
+		map< double, BuyBucket* >::reverse_iterator it;
 		it = buyOrders[newOrder.security].rbegin();
 		minIt = it;
 		while (it != buyOrders[newOrder.security].rend() && it->first >= newOrder.price) {
 			minIt = it;
 			it++;
 		}
-		if (minIt == buyOrders[newOrder.security].rend() || buyOrders.empty() || buyOrders[newOrder.security].empty() ||  minIt->second.empty() || it == minIt) {
+		if (minIt == buyOrders[newOrder.security].rend() || buyOrders.empty() || it == minIt) {
 			return;
 		}
 		it = buyOrders[newOrder.security].rbegin();
@@ -179,45 +166,42 @@ public:
 			  && newOrder.fulfilled != newOrder.CANCELLED
 			  && it != minIt)
 		{
-			if (it->second.empty()) {
+			if (it->second->bucket.empty()) {
 				it++;
 				continue;
 			}
 
-			// get all orders with current value
-			auto order_it = it->second.begin();
-			auto order = *order_it;
+			BuyBucket *bucketContainer = it->second;
+			double sellQuantity = newOrder.quantity;
 
-			while (order_it != it->second.end()) {
-				// cout <<"Checking sell order with price: " <<order->price <<", quantity: " <<order->quantity <<endl;
-				int buyQuantity = newOrder.quantity;
-				int sellQuantity = order->quantity;
-				if (buyQuantity < sellQuantity) {
+			while (!bucketContainer->bucket.empty()
+				&& newOrder.fulfilled != newOrder.FULLY_FULFILLED
+				&& newOrder.fulfilled != newOrder.CANCELLED)
+			{
+				auto order = bucketContainer->bucket.top();
+				double buyQuantity = order->quantity;
+				if (sellQuantity < buyQuantity) {
 					// sell order is partially fulfilled
-					order->quantity -= buyQuantity;
+					order->quantity -= sellQuantity;
 					order->fulfilled = order->PARTIALLY_FULFILLED;
 					// buy order is fully fulfilled
-					newOrder.quantity = 0.0;
+					newOrder.quantity = 0;
 					newOrder.fulfilled = newOrder.FULLY_FULFILLED;
 				}
 				else {
 					// buy order is partially fulfilled
-					newOrder.quantity -= sellQuantity;
+					newOrder.quantity -= buyQuantity;
 					newOrder.fulfilled = newOrder.PARTIALLY_FULFILLED;
 					// sell order is fully fulfilled and removed
-					order->quantity = 0.0;
+					order->quantity = 0;
 					order->fulfilled = order->FULLY_FULFILLED;
-
-					if (newOrder.quantity == 0.0) {
-						newOrder.fulfilled = newOrder.FULLY_FULFILLED;
-					}
 				}
-
+				if (newOrder.quantity == 0) {
+					newOrder.fulfilled = newOrder.FULLY_FULFILLED;
+				}
+				// if buy order is fulfilled, remove
 				if (order->fulfilled == order->FULLY_FULFILLED) {
-					order_it = buyOrders[order->security].at(it->first).erase(order_it);
-				}
-				else {
-					order_it++;
+					bucketContainer->bucket.pop();
 				}
 
 				if (newOrder.fulfilled == 2 || newOrder.fulfilled == 3)
@@ -226,7 +210,6 @@ public:
 			}
 			it++;
 		}
-		cleanUpBook();
 	}
 
 	void matchOrder(Order& order) {
@@ -238,12 +221,17 @@ public:
 	void insertOrder(Order& order) {
 		matchOrder(order);
 		Order *newOrder = &order;
-		if (order.fulfilled != 2 && order.fulfilled != 3) {
+		if (order.fulfilled != order.FULLY_FULFILLED && order.fulfilled != order.CANCELLED) {
+			double priceBucket = floor(order.price / this->securities[order.security]->getTickSize()) * this->securities[order.security]->getTickSize();
 			if (order.type == order.BUY) {
-				buyOrders[order.security][order.price].push_back(newOrder);
+				if (buyOrders[order.security][priceBucket] == nullptr)
+					buyOrders[order.security][priceBucket] = new BuyBucket();
+				buyOrders[order.security][priceBucket]->bucket.push(newOrder);
 			}
 			else {
-				sellOrders[order.security][order.price].push_back(newOrder);
+				if (sellOrders[order.security][priceBucket] == nullptr)
+					sellOrders[order.security][priceBucket] = new SellBucket();
+				sellOrders[order.security][priceBucket]->bucket.push(newOrder);
 			}
 		}
 		allOrders.insert({newOrder->identifier, newOrder});

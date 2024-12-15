@@ -16,10 +16,10 @@ public:
 	std::string identifier;
 	std::string security;
 	double total_quantity;
-	double quantity;
+	mutable double quantity;
 	double price;
 	// 0: Not fulfilled, 1: Partially fulfilled, 2: Fully fulfilled, 3: Cancelled
-	enum Fulfilled { NOT_FULFILLED, PARTIALLY_FULFILLED, FULLY_FULFILLED, CANCELLED } fulfilled;
+	mutable enum Fulfilled { NOT_FULFILLED, PARTIALLY_FULFILLED, FULLY_FULFILLED, CANCELLED } fulfilled;
 
 
 	string generateUUID() {
@@ -52,7 +52,7 @@ public:
 	void print(bool book = false) {
 		if (!book) {
 			cout <<"  Order " <<this->identifier <<"\n\t"
-			<<this->security << "  Quantity: " <<this->quantity <<", Fulfilled: " <<((this->fulfilled == NOT_FULFILLED) ? "no" : (this->fulfilled == FULLY_FULFILLED) ? "yes" : ((this->fulfilled == PARTIALLY_FULFILLED) ? "partially" : "cancelled")) <<endl;
+			<<this->security <<"  Price: " <<this->price << ", Quantity: " <<this->quantity <<", Fulfilled: " <<((this->fulfilled == NOT_FULFILLED) ? "no" : (this->fulfilled == FULLY_FULFILLED) ? "yes" : ((this->fulfilled == PARTIALLY_FULFILLED) ? "partially" : "cancelled")) <<endl;
 		}
 		else {
 			cout <<"  Order " <<this->identifier <<"\n\t"

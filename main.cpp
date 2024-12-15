@@ -6,9 +6,21 @@
 #include <vector>
 using namespace std;
 
+/*	This is a function that creates securities. Ideally,
+	it would not be used every time the application started,
+	and if it did, it would load this information from a DB.
+*/
+void createSecurities(vector<Security*>& securities){
+	securities.push_back(new Security("ADA", 0.001));
+	securities.push_back(new Security("BTC", 0.1));
+}
+
 int main() {
 
 	Book *book = new Book();
+	vector<Security*> securities;
+	createSecurities(securities);
+	book->addSecurities(securities);
 	string line{""};
 	vector<string> lines;
 	ifstream file("input.txt");
