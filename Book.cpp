@@ -56,6 +56,25 @@ public:
 			return;
 		}
 		cout <<"\n# Sell Orders\n=============\n";
+		for (auto [securityString, bucketMap] : sellOrders) {
+			for (auto [price, bucketContainer] : bucketMap) {
+				cout <<"\nBucket for " <<price <<":\n  total_quantity: " <<bucketContainer->total_quantity <<endl;
+				auto tempBucket = bucketContainer->bucket;
+				while (!tempBucket.empty()) {
+					auto top = tempBucket.top();
+					tempBucket.pop();
+					top->print();
+				}
+			}
+		}
+	}
+
+	void printSellOrdersFromAll() {
+		if (sellOrders.empty()) {
+			cout <<"\n# No Sell Orders\n";
+			return;
+		}
+		cout <<"\n# Sell Orders\n=============\n";
 		for (auto& [securityString, order] : allOrders) {
 			if (order->type == order->SELL && (order->fulfilled == order->NOT_FULFILLED || order->fulfilled == order->PARTIALLY_FULFILLED)) {
 				order->print();
@@ -64,6 +83,25 @@ public:
 	}
 
 	void printBuyOrders() {
+		if (buyOrders.empty()) {
+			cout <<"\n# No Buy Orders\n";
+			return;
+		}
+		cout <<"\n# Buy Orders\n=============\n";
+		for (auto [securityString, bucketMap] : buyOrders) {
+			for (auto [price, bucketContainer] : bucketMap) {
+				cout <<"\nBucket for " <<price <<":\n  total_quantity: " <<bucketContainer->total_quantity <<endl;
+				auto tempBucket = bucketContainer->bucket;
+				while (!tempBucket.empty()) {
+					auto top = tempBucket.top();
+					tempBucket.pop();
+					top->print();
+				}
+			}
+		}
+	}
+
+	void printBuyOrdersFromAll() {
 		if (buyOrders.empty()) {
 			cout <<"\n# No Buy Orders\n";
 			return;
@@ -81,7 +119,8 @@ public:
 		map< double, SellBucket* >::iterator it;
 		it = sellOrders[newOrder.security].begin();
 		maxIt = it;
-		while (it != sellOrders[newOrder.security].end() && it->first <= newOrder.price) {
+		double orderPriceBucket = floorf(newOrder.price / this->securities[newOrder.security]->getTickSize()) * this->securities[newOrder.security]->getTickSize();
+		while (it != sellOrders[newOrder.security].end() && it->first <= orderPriceBucket) {
 			maxIt = it;
 			it++;
 		}
@@ -91,7 +130,7 @@ public:
 		it = sellOrders[newOrder.security].begin();
 
 		maxIt++;
-		// cout <<"Trying to match buy order with price: " <<newOrder.price <<" and quantity: " <<newOrder.quantity <<endl;
+		// cout <<"Trying to match buy order with price: " <<newOrder.price <<", quantity: " <<newOrder.quantity <<" and maxIt: " <<maxIt->first <<endl;
 
 		while (it != sellOrders[newOrder.security].end()
 			  && newOrder.fulfilled != newOrder.FULLY_FULFILLED
@@ -131,6 +170,9 @@ public:
 				if (newOrder.quantity == 0) {
 					newOrder.fulfilled = newOrder.FULLY_FULFILLED;
 				}
+
+				bucketContainer->total_quantity -= (sellQuantity - order->quantity);
+
 				// if sell order is fulfilled, remove
 				if (order->fulfilled == order->FULLY_FULFILLED) {
 					bucketContainer->bucket.pop();
@@ -149,7 +191,8 @@ public:
 		map< double, BuyBucket* >::reverse_iterator it;
 		it = buyOrders[newOrder.security].rbegin();
 		minIt = it;
-		while (it != buyOrders[newOrder.security].rend() && it->first >= newOrder.price) {
+		double orderPriceBucket = floorf(newOrder.price / this->securities[newOrder.security]->getTickSize()) * this->securities[newOrder.security]->getTickSize();
+		while (it != buyOrders[newOrder.security].rend() && it->first >= orderPriceBucket) {
 			minIt = it;
 			it++;
 		}
@@ -159,7 +202,7 @@ public:
 		it = buyOrders[newOrder.security].rbegin();
 
 		minIt++;
-		// cout <<"Trying to match sell order with price: " <<newOrder.price <<" and quantity: " <<newOrder.quantity <<endl;
+		// cout <<"Trying to match sell order with price: " <<newOrder.price <<", quantity: " <<newOrder.quantity <<" and maxIt: " <<minIt->first <<endl;
 
 		while (it != buyOrders[newOrder.security].rend()
 			  && newOrder.fulfilled != newOrder.FULLY_FULFILLED
@@ -199,6 +242,9 @@ public:
 				if (newOrder.quantity == 0) {
 					newOrder.fulfilled = newOrder.FULLY_FULFILLED;
 				}
+
+				bucketContainer->total_quantity -= (buyQuantity - order->quantity);
+
 				// if buy order is fulfilled, remove
 				if (order->fulfilled == order->FULLY_FULFILLED) {
 					bucketContainer->bucket.pop();
@@ -222,16 +268,18 @@ public:
 		matchOrder(order);
 		Order *newOrder = &order;
 		if (order.fulfilled != order.FULLY_FULFILLED && order.fulfilled != order.CANCELLED) {
-			double priceBucket = floor(order.price / this->securities[order.security]->getTickSize()) * this->securities[order.security]->getTickSize();
+			double priceBucket = floorf(order.price / this->securities[order.security]->getTickSize()) * this->securities[order.security]->getTickSize();
 			if (order.type == order.BUY) {
 				if (buyOrders[order.security][priceBucket] == nullptr)
 					buyOrders[order.security][priceBucket] = new BuyBucket();
 				buyOrders[order.security][priceBucket]->bucket.push(newOrder);
+				buyOrders[order.security][priceBucket]->total_quantity += newOrder->quantity;
 			}
 			else {
 				if (sellOrders[order.security][priceBucket] == nullptr)
 					sellOrders[order.security][priceBucket] = new SellBucket();
 				sellOrders[order.security][priceBucket]->bucket.push(newOrder);
+				sellOrders[order.security][priceBucket]->total_quantity += newOrder->quantity;
 			}
 		}
 		allOrders.insert({newOrder->identifier, newOrder});
