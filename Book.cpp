@@ -16,13 +16,13 @@ private:
 	class CompareBuy {
 	public:
 		bool operator() (Order* o1, Order* o2) {
-			return (o1->price > o2->price) ? o1 : o2;
+			return o1->price < o2->price;
 		}
 	};
 	class CompareSell {
 	public:
 		bool operator() (Order* o1, Order* o2) {
-			return (o1->price > o2->price) ? o1 : o2;
+			return o1->price > o2->price;
 		}
 	};
 
@@ -154,17 +154,17 @@ public:
 			}
 
 			SellBucket *bucketContainer = it->second;
-			double buyQuantity = newOrder.quantity;
-
 			while (!bucketContainer->bucket.empty()
 				  && newOrder.fulfilled != newOrder.FULLY_FULFILLED
 				  && newOrder.fulfilled != newOrder.CANCELLED)
 			{
 				auto order = bucketContainer->bucket.top();
+				if (compareDoubles(newOrder.price, order->price) < 0)
+					break;
 				double sellQuantity = order->quantity;
-				if (buyQuantity < sellQuantity) {
+				if (compareDoubles(newOrder.quantity, sellQuantity) < 0) {
 					// sell order is partially fulfilled
-					order->quantity -= buyQuantity;
+					order->quantity -= newOrder.quantity;
 					order->fulfilled = order->PARTIALLY_FULFILLED;
 					// buy order is fully fulfilled
 					newOrder.quantity = 0;
@@ -226,17 +226,18 @@ public:
 			}
 
 			BuyBucket *bucketContainer = it->second;
-			double sellQuantity = newOrder.quantity;
 
 			while (!bucketContainer->bucket.empty()
 				&& newOrder.fulfilled != newOrder.FULLY_FULFILLED
 				&& newOrder.fulfilled != newOrder.CANCELLED)
 			{
 				auto order = bucketContainer->bucket.top();
+				if (compareDoubles(newOrder.price, order->price) > 0)
+					break;
 				double buyQuantity = order->quantity;
-				if (sellQuantity < buyQuantity) {
+				if (compareDoubles(newOrder.quantity, buyQuantity) < 0) {
 					// sell order is partially fulfilled
-					order->quantity -= sellQuantity;
+					order->quantity -= newOrder.quantity;
 					order->fulfilled = order->PARTIALLY_FULFILLED;
 					// buy order is fully fulfilled
 					newOrder.quantity = 0;
