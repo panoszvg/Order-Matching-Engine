@@ -6,6 +6,8 @@
 #include <deque>
 #include <queue>
 #include <iostream>
+#include <stdio.h>
+#include <string.h>
 using namespace std;
 
 class Book {
@@ -43,6 +45,15 @@ private:
 public:
 	map<string, Order*> allOrders;
 	Book() {}
+
+	int compareDoubles(double a, double b) {
+		char a_str[20], b_str[20];
+
+		sprintf(a_str, "%19.7f", a);
+		sprintf(b_str, "%19.7f", b);
+
+		return strcmp(a_str, b_str);
+	}
 
 	void addSecurities(vector<Security *>& securities) {
 		for (auto& security : securities) {
@@ -119,7 +130,7 @@ public:
 		map< double, SellBucket* >::iterator it;
 		it = sellOrders[newOrder.security].begin();
 		maxIt = it;
-		double orderPriceBucket = floorf(newOrder.price / this->securities[newOrder.security]->getTickSize()) * this->securities[newOrder.security]->getTickSize();
+		double orderPriceBucket = floorf(floorf(newOrder.price / this->securities[newOrder.security]->getTickSize()) * this->securities[newOrder.security]->getTickSize());
 		while (it != sellOrders[newOrder.security].end() && it->first <= orderPriceBucket) {
 			maxIt = it;
 			it++;
@@ -167,7 +178,7 @@ public:
 					order->quantity = 0;
 					order->fulfilled = order->FULLY_FULFILLED;
 				}
-				if (newOrder.quantity == 0) {
+				if (compareDoubles(newOrder.quantity, 0.0) == 0) {
 					newOrder.fulfilled = newOrder.FULLY_FULFILLED;
 				}
 
@@ -191,7 +202,7 @@ public:
 		map< double, BuyBucket* >::reverse_iterator it;
 		it = buyOrders[newOrder.security].rbegin();
 		minIt = it;
-		double orderPriceBucket = floorf(newOrder.price / this->securities[newOrder.security]->getTickSize()) * this->securities[newOrder.security]->getTickSize();
+		double orderPriceBucket = floorf(floorf(newOrder.price / this->securities[newOrder.security]->getTickSize()) * this->securities[newOrder.security]->getTickSize());
 		while (it != buyOrders[newOrder.security].rend() && it->first >= orderPriceBucket) {
 			minIt = it;
 			it++;
@@ -239,7 +250,7 @@ public:
 					order->quantity = 0;
 					order->fulfilled = order->FULLY_FULFILLED;
 				}
-				if (newOrder.quantity == 0) {
+				if (compareDoubles(newOrder.quantity, 0.0) == 0) {
 					newOrder.fulfilled = newOrder.FULLY_FULFILLED;
 				}
 
@@ -268,7 +279,7 @@ public:
 		matchOrder(order);
 		Order *newOrder = &order;
 		if (order.fulfilled != order.FULLY_FULFILLED && order.fulfilled != order.CANCELLED) {
-			double priceBucket = floorf(order.price / this->securities[order.security]->getTickSize()) * this->securities[order.security]->getTickSize();
+			double priceBucket = floorf(floorf(order.price / this->securities[order.security]->getTickSize()) * this->securities[order.security]->getTickSize());
 			if (order.type == order.BUY) {
 				if (buyOrders[order.security][priceBucket] == nullptr)
 					buyOrders[order.security][priceBucket] = new BuyBucket();
