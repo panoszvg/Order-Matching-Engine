@@ -43,15 +43,21 @@ private:
 	map< string, map< double, shared_ptr<SellBucket> > > sellOrders;
 	map<string, shared_ptr<Security>> securities;
 
-	const double EPSILON = 1e-7;
+	const double EPSILON = 1e-8;
 
-	double getPriceBucket(double price, double bucket_size) {
+	inline double getPriceBucket(double price, double bucket_size) {
 		return floor(price / bucket_size) * bucket_size;
 	}
 
 	inline int compareDoubles(double a, double b) {
 		if (fabs(a - b) < EPSILON) return 0;
 		return (a < b) ? -1 : 1;
+	}
+
+	inline bool isPriceTickAligned(double price, double tick) {
+		double ratio = price / tick;
+		double rounded = round(ratio);
+		return fabs(ratio - rounded) < EPSILON;
 	}
 
 public:
@@ -282,6 +288,16 @@ public:
 	void insertOrder(shared_ptr<Order> order) {
 		if (this->securities.find(order->security) == this->securities.end())
 			return;
+
+		auto orderSecurity = this->securities[order->security];
+		double orderSecurityTick = orderSecurity->getTickSize();
+
+		if (!isPriceTickAligned(order->price, orderSecurityTick)) {
+			std::ostringstream oss;
+			oss << "Order price (" << order->price << ") does not align with tick size (" << orderSecurityTick << ")";
+			throw std::invalid_argument(oss.str());
+		}
+
 		matchOrder(order);
 		auto newOrder = order;
 		if (order->fulfilled != order->FULLY_FULFILLED && order->fulfilled != order->CANCELLED) {

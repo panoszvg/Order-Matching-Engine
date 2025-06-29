@@ -11,8 +11,8 @@ using namespace std;
 	and if it did, it would load this information from a DB.
 */
 void createSecurities(vector<shared_ptr<Security>>& securities){
-	securities.push_back(make_shared<Security>("ADA", 0.01, 0.05));
-	securities.push_back(make_shared<Security>("BTC", 0.1, 0.5));
+	securities.push_back(make_shared<Security>("ADA", 0.001, 0.05));
+	securities.push_back(make_shared<Security>("BTC", 0.01, 0.5));
 }
 
 int main() {
@@ -40,7 +40,11 @@ int main() {
 		getline(ss,price, ',');
 
 		shared_ptr<Order> newOrder = make_shared<Order>(security, (sell == "SELL") ? 1 : 0, stod(quantity), stod(price));
-		book->insertOrder(newOrder);
+		try {
+			book->insertOrder(newOrder);
+		} catch (const invalid_argument& arg) {
+			cerr << "Order rejected: " << arg.what() << endl;
+		}
 	}
 
 
