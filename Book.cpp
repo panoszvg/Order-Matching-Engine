@@ -43,6 +43,27 @@ private:
 	map< string, map< double, shared_ptr<SellBucket> > > sellOrders;
 	map<string, shared_ptr<Security>> securities;
 
+	void cleanUpBuckets(shared_ptr<Order> order){
+		if (order->type == Order::BUY) {
+			auto& book = sellOrders[order->security];
+			for (auto it = book.begin(); it != book.end(); ) {
+				if (it->second->bucket.empty())
+					it = book.erase(it);
+				else
+					++it;
+				}
+			}
+		else {
+			auto& book = buyOrders[order->security];
+			for (auto it = book.begin(); it != book.end(); ) {
+				if (it->second->bucket.empty())
+					it = book.erase(it);
+				else
+					++it;
+			}
+		}
+	}
+
 	const double EPSILON = 1e-8;
 
 	inline double getPriceBucket(double price, double bucket_size) {
@@ -70,15 +91,17 @@ public:
 		}
 	}
 
-	void printSellOrders() {
+	void printSellOrders() {		
 		if (sellOrders.empty()) {
-			cout <<"\n# No Sell Orders\n";
+			logger->info("No Sell Orders");
 			return;
 		}
-		cout <<"\n# Sell Orders\n=============\n";
+		logger->info("# Sell Orders");
+		logger->info("=============");
 		for (auto [securityString, bucketMap] : sellOrders) {
 			for (auto [price, bucketContainer] : bucketMap) {
-				cout <<"\nBucket for " <<price <<":\n  total_quantity: " <<bucketContainer->total_quantity <<endl;
+				logger->info("Bucket for {:.6}:", price);
+				logger->info("  total_quantity: {:.6}", bucketContainer->total_quantity);
 				auto tempBucket = bucketContainer->bucket;
 				while (!tempBucket.empty()) {
 					auto top = tempBucket.top();
@@ -91,10 +114,11 @@ public:
 
 	void printSellOrdersFromAll() {
 		if (sellOrders.empty()) {
-			cout <<"\n# No Sell Orders\n";
+			logger->info("No Sell Orders");
 			return;
 		}
-		cout <<"\n# Sell Orders\n=============\n";
+		logger->info("# Sell Orders");
+		logger->info("=============");
 		for (auto& [securityString, order] : allOrders) {
 			if (order->type == order->SELL && (order->fulfilled == order->NOT_FULFILLED || order->fulfilled == order->PARTIALLY_FULFILLED)) {
 				order->print();
@@ -104,13 +128,15 @@ public:
 
 	void printBuyOrders() {
 		if (buyOrders.empty()) {
-			cout <<"\n# No Buy Orders\n";
+			logger->info("# No Buy Orders");
 			return;
 		}
-		cout <<"\n# Buy Orders\n=============\n";
+		logger->info("# Buy Orders");
+		logger->info("=============");
 		for (auto [securityString, bucketMap] : buyOrders) {
 			for (auto [price, bucketContainer] : bucketMap) {
-				cout <<"\nBucket for " <<price <<":\n  total_quantity: " <<bucketContainer->total_quantity <<endl;
+				logger->info("Bucket for {:.6}:", price);
+				logger->info("  total_quantity: {:.6}", bucketContainer->total_quantity);
 				auto tempBucket = bucketContainer->bucket;
 				while (!tempBucket.empty()) {
 					auto top = tempBucket.top();
@@ -123,10 +149,11 @@ public:
 
 	void printBuyOrdersFromAll() {
 		if (buyOrders.empty()) {
-			cout <<"\n# No Buy Orders\n";
+			logger->info("# No Buy Orders");
 			return;
 		}
-		cout <<"\n# Buy Orders\n=============\n";
+		logger->info("# Buy Orders");
+		logger->info("=============");
 		for (auto& [securityString, order] : allOrders) {
 			if (order->type == order->BUY && (order->fulfilled == order->NOT_FULFILLED || order->fulfilled == order->PARTIALLY_FULFILLED)) {
 				order->print();
@@ -134,155 +161,132 @@ public:
 		}
 	}
 
-	void matchBuyOrder(shared_ptr<Order> newOrder) {
-		map< double, shared_ptr<SellBucket> >::iterator maxIt;
-		map< double, shared_ptr<SellBucket> >::iterator it;
-		it = sellOrders[newOrder->security].begin();
-		maxIt = it;
-		double orderPriceBucket = getPriceBucket(newOrder->price, this->securities[newOrder->security]->getBucketSize());
-		while (it != sellOrders[newOrder->security].end() && it->first <= orderPriceBucket) {
-			maxIt = it;
-			it++;
-		}
-		if (maxIt == sellOrders[newOrder->security].end() || sellOrders.empty() || it == maxIt) {
-			return;
-		}
-		it = sellOrders[newOrder->security].begin();
-
-		maxIt++;
-		// cout <<"Trying to match buy order with price: " <<newOrder->price <<", quantity: " <<newOrder.quantity <<" and maxIt: " <<maxIt->first <<endl;
-
-		while (it != sellOrders[newOrder->security].end()
-			  && newOrder->fulfilled != newOrder->FULLY_FULFILLED
-			  && newOrder->fulfilled != newOrder->CANCELLED
-			  && it != maxIt)
+	void matchBuyAgainstBucket(shared_ptr<Order>& buyOrder, shared_ptr<SellBucket>& bucket) {
+		while (!bucket->bucket.empty()
+			&& buyOrder->fulfilled != Order::FULLY_FULFILLED
+			&& buyOrder->fulfilled != Order::CANCELLED)
 		{
-			if (it->second->bucket.empty()) {
-				it++;
-				continue;
+			auto sellOrder = bucket->bucket.top();
+
+			// Stop if the sell price is too high
+			if (compareDoubles(buyOrder->price, sellOrder->price) < 0)
+				break;
+
+			// Determine how much can be traded
+			double tradedQty = min(buyOrder->quantity, sellOrder->quantity);
+
+			// Subtract from both orders
+			buyOrder->quantity -= tradedQty;
+			sellOrder->quantity -= tradedQty;
+
+			// Update fulfillment status for buy order
+			if (compareDoubles(buyOrder->quantity, 0.0) == 0)
+				buyOrder->fulfilled = Order::FULLY_FULFILLED;
+			else
+				buyOrder->fulfilled = Order::PARTIALLY_FULFILLED;
+
+			// Update fulfillment status for sell order
+			if (compareDoubles(sellOrder->quantity, 0.0) == 0) {
+				sellOrder->fulfilled = Order::FULLY_FULFILLED;
+				bucket->bucket.pop();
+			} else {
+				sellOrder->fulfilled = Order::PARTIALLY_FULFILLED;
 			}
 
-			auto& bucketContainer = it->second;
-			while (!bucketContainer->bucket.empty()
-				  && newOrder->fulfilled != newOrder->FULLY_FULFILLED
-				  && newOrder->fulfilled != newOrder->CANCELLED)
-			{
-				auto order = bucketContainer->bucket.top();
-				if (compareDoubles(newOrder->price, order->price) < 0)
-					break;
-				double sellQuantity = order->quantity;
-				if (compareDoubles(newOrder->quantity, sellQuantity) < 0) {
-					// sell order is partially fulfilled
-					order->quantity -= newOrder->quantity;
-					order->fulfilled = order->PARTIALLY_FULFILLED;
-					// buy order is fully fulfilled
-					newOrder->quantity = 0;
-					newOrder->fulfilled = newOrder->FULLY_FULFILLED;
-				}
-				else {
-					// buy order is partially fulfilled
-					newOrder->quantity -= sellQuantity;
-					newOrder->fulfilled = newOrder->PARTIALLY_FULFILLED;
-					// sell order is fully fulfilled and removed
-					order->quantity = 0;
-					order->fulfilled = order->FULLY_FULFILLED;
-				}
-				if (compareDoubles(newOrder->quantity, 0.0) == 0) {
-					newOrder->fulfilled = newOrder->FULLY_FULFILLED;
-				}
+			// Reduce total quantity in the bucket
+			bucket->total_quantity -= tradedQty;
+		}
+	}
 
-				bucketContainer->total_quantity -= (sellQuantity - order->quantity);
 
-				// if sell order is fulfilled, remove
-				if (order->fulfilled == order->FULLY_FULFILLED) {
-					bucketContainer->bucket.pop();
-				}
+	void matchBuyOrder(shared_ptr<Order> newOrder) {
+		if (sellOrders.empty()) return;
 
-				if (newOrder->fulfilled == newOrder->FULLY_FULFILLED || newOrder->fulfilled == newOrder->CANCELLED)
-					break;
+		auto& sellBuckets = sellOrders[newOrder->security];
+		if (sellBuckets.empty()) return;
 
+		double orderPriceBucket = getPriceBucket(newOrder->price, securities[newOrder->security]->getBucketSize());
+
+		auto it = sellBuckets.begin();
+		auto endIt = it;
+		while (endIt != sellBuckets.end() && endIt->first <= orderPriceBucket) {
+			++endIt;
+		}
+
+		for (; it != endIt; ++it) {
+			auto& bucket = it->second;
+			if (bucket->bucket.empty()) continue;
+
+			matchBuyAgainstBucket(newOrder, bucket);
+		}
+	}
+
+
+	void matchSellAgainstBucket(shared_ptr<Order>& sellOrder, shared_ptr<BuyBucket>& bucket) {
+		while (!bucket->bucket.empty()
+			&& sellOrder->fulfilled != Order::FULLY_FULFILLED
+			&& sellOrder->fulfilled != Order::CANCELLED)
+		{
+			auto buyOrder = bucket->bucket.top();
+
+			// Stop if the buy price is too low
+			if (compareDoubles(sellOrder->price, buyOrder->price) > 0)
+				break;
+
+			// Determine how much can be traded
+			double tradedQty = min(sellOrder->quantity, buyOrder->quantity);
+
+			// Subtract from both orders
+			sellOrder->quantity -= tradedQty;
+			buyOrder->quantity -= tradedQty;
+
+			// Update fulfillment status for sell order
+			if (compareDoubles(sellOrder->quantity, 0.0) == 0)
+				sellOrder->fulfilled = Order::FULLY_FULFILLED;
+			else
+				sellOrder->fulfilled = Order::PARTIALLY_FULFILLED;
+
+			// Update fulfillment status for buy order
+			if (compareDoubles(buyOrder->quantity, 0.0) == 0) {
+				buyOrder->fulfilled = Order::FULLY_FULFILLED;
+				bucket->bucket.pop();
+			} else {
+				buyOrder->fulfilled = Order::PARTIALLY_FULFILLED;
 			}
-			it++;
+
+			// Reduce total quantity in the bucket
+			bucket->total_quantity -= tradedQty;
 		}
 	}
 
 	void matchSellOrder(shared_ptr<Order> newOrder) {
-		map< double, shared_ptr<BuyBucket> >::reverse_iterator minIt;
-		map< double, shared_ptr<BuyBucket> >::reverse_iterator it;
-		it = buyOrders[newOrder->security].rbegin();
-		minIt = it;
-		double orderPriceBucket = getPriceBucket(newOrder->price, this->securities[newOrder->security]->getBucketSize());
-		while (it != buyOrders[newOrder->security].rend() && it->first >= orderPriceBucket) {
-			minIt = it;
-			it++;
+		if (buyOrders.empty()) return;
+
+		auto& buyBuckets = buyOrders[newOrder->security];
+		if (buyBuckets.empty()) return;
+
+		double orderPriceBucket = getPriceBucket(newOrder->price, securities[newOrder->security]->getBucketSize());
+
+		auto it = buyBuckets.rbegin();
+		auto endIt = it;
+		while (endIt != buyBuckets.rend() && endIt->first >= orderPriceBucket) {
+			++endIt;
 		}
-		if (minIt == buyOrders[newOrder->security].rend() || buyOrders.empty() || it == minIt) {
-			return;
-		}
-		it = buyOrders[newOrder->security].rbegin();
 
-		minIt++;
-		// cout <<"Trying to match sell order with price: " <<newOrder->price <<", quantity: " <<newOrder->quantity <<" and maxIt: " <<minIt->first <<endl;
+		for (; it != endIt; ++it) {
+			auto& bucket = it->second;
+			if (bucket->bucket.empty()) continue;
 
-		while (it != buyOrders[newOrder->security].rend()
-			  && newOrder->fulfilled != newOrder->FULLY_FULFILLED
-			  && newOrder->fulfilled != newOrder->CANCELLED
-			  && it != minIt)
-		{
-			if (it->second->bucket.empty()) {
-				it++;
-				continue;
-			}
-
-			auto& bucketContainer = it->second;
-
-			while (!bucketContainer->bucket.empty()
-				&& newOrder->fulfilled != newOrder->FULLY_FULFILLED
-				&& newOrder->fulfilled != newOrder->CANCELLED)
-			{
-				auto order = bucketContainer->bucket.top();
-				if (compareDoubles(newOrder->price, order->price) > 0)
-					break;
-				double buyQuantity = order->quantity;
-				if (compareDoubles(newOrder->quantity, buyQuantity) < 0) {
-					// sell order is partially fulfilled
-					order->quantity -= newOrder->quantity;
-					order->fulfilled = order->PARTIALLY_FULFILLED;
-					// buy order is fully fulfilled
-					newOrder->quantity = 0;
-					newOrder->fulfilled = newOrder->FULLY_FULFILLED;
-				}
-				else {
-					// buy order is partially fulfilled
-					newOrder->quantity -= buyQuantity;
-					newOrder->fulfilled = newOrder->PARTIALLY_FULFILLED;
-					// sell order is fully fulfilled and removed
-					order->quantity = 0;
-					order->fulfilled = order->FULLY_FULFILLED;
-				}
-				if (compareDoubles(newOrder->quantity, 0.0) == 0) {
-					newOrder->fulfilled = newOrder->FULLY_FULFILLED;
-				}
-
-				bucketContainer->total_quantity -= (buyQuantity - order->quantity);
-
-				// if buy order is fulfilled, remove
-				if (order->fulfilled == order->FULLY_FULFILLED) {
-					bucketContainer->bucket.pop();
-				}
-
-				if (newOrder->fulfilled == order->FULLY_FULFILLED || newOrder->fulfilled == newOrder->CANCELLED)
-					break;
-
-			}
-			it++;
+			matchSellAgainstBucket(newOrder, bucket);
 		}
 	}
+
 
 	void matchOrder(shared_ptr<Order> order) {
 		if (order->type == order->BUY)
 			matchBuyOrder(order);
 		else matchSellOrder(order);
+		cleanUpBuckets(order);
 	}
 
 	void insertOrder(shared_ptr<Order> order) {
@@ -303,13 +307,13 @@ public:
 		if (order->fulfilled != order->FULLY_FULFILLED && order->fulfilled != order->CANCELLED) {
 			double priceBucket = getPriceBucket(order->price, this->securities[order->security]->getBucketSize());
 			if (order->type == order->BUY) {
-				if (buyOrders[order->security][priceBucket] == nullptr)
+				if (buyOrders[order->security].find(priceBucket) == buyOrders[order->security].end())
 					buyOrders[order->security][priceBucket] = make_shared<BuyBucket>();
 				buyOrders[order->security][priceBucket]->bucket.push(newOrder);
 				buyOrders[order->security][priceBucket]->total_quantity += newOrder->quantity;
 			}
 			else {
-				if (sellOrders[order->security][priceBucket] == nullptr)
+				if (sellOrders[order->security].find(priceBucket) == sellOrders[order->security].end())
 					sellOrders[order->security][priceBucket] = make_shared<SellBucket>();
 				sellOrders[order->security][priceBucket]->bucket.push(newOrder);
 				sellOrders[order->security][priceBucket]->total_quantity += newOrder->quantity;

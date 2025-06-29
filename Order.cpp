@@ -2,7 +2,11 @@
 #include <iostream>
 #include <random>
 #include <sstream>
+#include <spdlog/spdlog.h>
+#include <spdlog/sinks/basic_file_sink.h>
 using namespace std;
+
+inline std::shared_ptr<spdlog::logger> logger = spdlog::basic_logger_mt("file_logger", "logs/app.log", true);
 
 static random_device              rd;
 static mt19937                    gen(rd());
@@ -49,17 +53,11 @@ public:
 		this->fulfilled = NOT_FULFILLED;
 	}
 
-	void print(bool book = false) {
-		if (!book) {
-			cout <<"  Order " <<this->identifier <<"\n\t"
-			<<this->security <<"  Price: " <<this->price << ", Quantity: " <<this->quantity <<", Fulfilled: " <<((this->fulfilled == NOT_FULFILLED) ? "no" : (this->fulfilled == FULLY_FULFILLED) ? "yes" : ((this->fulfilled == PARTIALLY_FULFILLED) ? "partially" : "cancelled")) <<endl;
-		}
-		else {
-			cout <<"  Order " <<this->identifier <<"\n\t"
-			<<this->security << "  Quantity: " <<this->total_quantity <<", Fulfilled: " <<((this->fulfilled == NOT_FULFILLED) ? "no" : (this->fulfilled == FULLY_FULFILLED) ? "yes" : ((this->fulfilled == PARTIALLY_FULFILLED) ? "partially" : "cancelled"));
-			if (this->fulfilled == PARTIALLY_FULFILLED)
-				cout <<" (" <<this->total_quantity - quantity <<"/" <<total_quantity <<")";
-			cout <<endl;
+	void print() {
+		logger->info("  Order {}:", this->identifier);
+		logger->info("    Price: {:.6}, Quantity: {:.6}, Fulfilled: {}", this->price, this->quantity, ((this->fulfilled == NOT_FULFILLED) ? "no" : (this->fulfilled == FULLY_FULFILLED) ? "yes" : ((this->fulfilled == PARTIALLY_FULFILLED) ? "partially" : "cancelled")));
+		if (this->fulfilled == PARTIALLY_FULFILLED) {
+			logger->info("      Filled: {:.6}/{:.6}", this->total_quantity - quantity, this->total_quantity);
 		}
 	}
 

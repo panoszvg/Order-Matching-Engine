@@ -17,6 +17,11 @@ void createSecurities(vector<shared_ptr<Security>>& securities){
 
 int main() {
 
+	logger->info("");
+	logger->info("PROGRAM START");
+	logger->info("");
+
+
 	unique_ptr<Book> book = make_unique<Book>();
 	vector<shared_ptr<Security>> securities;
 	createSecurities(securities);
@@ -48,16 +53,12 @@ int main() {
 	}
 
 
-	cout <<"\nBook after ending:\n";
+	logger->info("Book after ending:");
 	book->printBuyOrders();
 	book->printSellOrders();
-	cout <<endl;
 
-	// int counter = 0;
 	// for (auto& order : book->allOrders) {
-	// 	cout <<++counter <<" ";
-	// 	order.second->print(1);
-	// 	cout <<endl;
+	// 	order.second->print();
 	// }
 
 	return 0;
