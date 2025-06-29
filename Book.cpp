@@ -41,12 +41,12 @@ private:
 
 	map< string, map< double, shared_ptr<BuyBucket> > > buyOrders;
 	map< string, map< double, shared_ptr<SellBucket> > > sellOrders;
-	map<string, Security*> securities;
+	map<string, shared_ptr<Security>> securities;
 
 	const double EPSILON = 1e-7;
 
-	double getPriceBucket(double price, double tick) {
-		return floor(price / tick) * tick;
+	double getPriceBucket(double price, double bucket_size) {
+		return floor(price / bucket_size) * bucket_size;
 	}
 
 	inline int compareDoubles(double a, double b) {
@@ -58,7 +58,7 @@ public:
 	map<string, shared_ptr<Order>> allOrders;
 	Book() {}
 
-	void addSecurities(vector<Security *>& securities) {
+	void addSecurities(vector<shared_ptr<Security>>& securities) {
 		for (auto& security : securities) {
 			this->securities[security->getName()] = security;
 		}
@@ -133,7 +133,7 @@ public:
 		map< double, shared_ptr<SellBucket> >::iterator it;
 		it = sellOrders[newOrder->security].begin();
 		maxIt = it;
-		double orderPriceBucket = getPriceBucket(newOrder->price, this->securities[newOrder->security]->getTickSize());
+		double orderPriceBucket = getPriceBucket(newOrder->price, this->securities[newOrder->security]->getBucketSize());
 		while (it != sellOrders[newOrder->security].end() && it->first <= orderPriceBucket) {
 			maxIt = it;
 			it++;
@@ -156,7 +156,7 @@ public:
 				continue;
 			}
 
-			shared_ptr<SellBucket> bucketContainer = it->second;
+			auto& bucketContainer = it->second;
 			while (!bucketContainer->bucket.empty()
 				  && newOrder->fulfilled != newOrder->FULLY_FULFILLED
 				  && newOrder->fulfilled != newOrder->CANCELLED)
@@ -205,7 +205,7 @@ public:
 		map< double, shared_ptr<BuyBucket> >::reverse_iterator it;
 		it = buyOrders[newOrder->security].rbegin();
 		minIt = it;
-		double orderPriceBucket = getPriceBucket(newOrder->price, this->securities[newOrder->security]->getTickSize());
+		double orderPriceBucket = getPriceBucket(newOrder->price, this->securities[newOrder->security]->getBucketSize());
 		while (it != buyOrders[newOrder->security].rend() && it->first >= orderPriceBucket) {
 			minIt = it;
 			it++;
@@ -228,7 +228,7 @@ public:
 				continue;
 			}
 
-			shared_ptr<BuyBucket> bucketContainer = it->second;
+			auto& bucketContainer = it->second;
 
 			while (!bucketContainer->bucket.empty()
 				&& newOrder->fulfilled != newOrder->FULLY_FULFILLED
@@ -283,9 +283,9 @@ public:
 		if (this->securities.find(order->security) == this->securities.end())
 			return;
 		matchOrder(order);
-		shared_ptr<Order> newOrder = order;
+		auto newOrder = order;
 		if (order->fulfilled != order->FULLY_FULFILLED && order->fulfilled != order->CANCELLED) {
-			double priceBucket = getPriceBucket(order->price, this->securities[order->security]->getTickSize());
+			double priceBucket = getPriceBucket(order->price, this->securities[order->security]->getBucketSize());
 			if (order->type == order->BUY) {
 				if (buyOrders[order->security][priceBucket] == nullptr)
 					buyOrders[order->security][priceBucket] = make_shared<BuyBucket>();

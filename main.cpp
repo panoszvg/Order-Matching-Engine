@@ -10,15 +10,15 @@ using namespace std;
 	it would not be used every time the application started,
 	and if it did, it would load this information from a DB.
 */
-void createSecurities(vector<Security*>& securities){
-	securities.push_back(new Security("ADA", 0.001));
-	securities.push_back(new Security("BTC", 0.1));
+void createSecurities(vector<shared_ptr<Security>>& securities){
+	securities.push_back(make_shared<Security>("ADA", 0.01, 0.05));
+	securities.push_back(make_shared<Security>("BTC", 0.1, 0.5));
 }
 
 int main() {
 
-	Book *book = new Book();
-	vector<Security*> securities;
+	unique_ptr<Book> book = make_unique<Book>();
+	vector<shared_ptr<Security>> securities;
 	createSecurities(securities);
 	book->addSecurities(securities);
 	string line{""};
