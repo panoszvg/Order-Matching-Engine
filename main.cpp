@@ -39,8 +39,8 @@ int main() {
 		getline(ss,quantity, ',');
 		getline(ss,price, ',');
 
-		Order *newOrder = new Order(security, (sell == "SELL") ? 1 : 0, stod(quantity), stod(price));
-		book->insertOrder(*newOrder);
+		shared_ptr<Order> newOrder = make_shared<Order>(security, (sell == "SELL") ? 1 : 0, stod(quantity), stod(price));
+		book->insertOrder(newOrder);
 	}
 
 
