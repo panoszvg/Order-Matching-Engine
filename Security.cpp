@@ -1,28 +1,16 @@
-#include <string>
-using namespace std;
+#include "Security.h"
 
-class Security {
-private:
-	string name;
-	double tick_size;
-	double bucket_size;
+Security::Security(string symbol, double tickSize, double bucketSize)
+    : symbol(std::move(symbol)), tickSize(tickSize), bucketSize(bucketSize) {}
 
-public:
-	Security(string name, double tick_size, double bucket_size) {
-		this->name = name;
-		this->tick_size = tick_size;
-		this->bucket_size = bucket_size;
-	}
+const string& Security::getSymbol() const {
+    return symbol;
+}
 
-	string getName() {
-		return this->name;
-	}
+double Security::getTickSize() const {
+    return tickSize;
+}
 
-	double getTickSize() {
-		return this->tick_size;
-	}
-
-	double getBucketSize() {
-		return this->bucket_size;
-	}
-};
+double Security::getBucketSize() const {
+    return bucketSize;
+}

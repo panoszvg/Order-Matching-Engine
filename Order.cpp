@@ -1,64 +1,41 @@
-#include <string>
+#include "Order.h"
 #include <iostream>
 #include <random>
 #include <sstream>
-#include <spdlog/spdlog.h>
-#include <spdlog/sinks/basic_file_sink.h>
-using namespace std;
+#include <iomanip>
 
-inline std::shared_ptr<spdlog::logger> logger = spdlog::basic_logger_mt("file_logger", "logs/app.log", true);
+std::shared_ptr<spdlog::logger> logger = spdlog::basic_logger_mt<spdlog::async_factory>("order_logger", "logs/app.log", true);
 
-static random_device              rd;
-static mt19937                    gen(rd());
-static uniform_int_distribution<> dis(0, 15);
-static uniform_int_distribution<> dis2(8, 11);
+Order::Order(string security, OrderType type, double quantity, double price)
+    : id(generateUUID()), security(std::move(security)), type(type), quantity(quantity), price(price), fulfilled(NOT_FULFILLED) {}
 
-class Order{
-public:
-	enum Type { BUY, SELL } type;
+static std::random_device              rd;
+static std::mt19937                    gen(rd());
+static std::uniform_int_distribution<> dis(0, 15);
+static std::uniform_int_distribution<> dis2(8, 11);
 
-	std::string identifier;
-	std::string security;
-	double total_quantity;
-	mutable double quantity;
-	double price;
-	// 0: Not fulfilled, 1: Partially fulfilled, 2: Fully fulfilled, 3: Cancelled
-	mutable enum Fulfilled { NOT_FULFILLED, PARTIALLY_FULFILLED, FULLY_FULFILLED, CANCELLED } fulfilled;
+string generateUUID() {
+	std::stringstream ss;
+	int i;
+	ss << std::hex;
+	for (i = 0; i < 8; i++) ss << dis(gen);
+	ss << "-";
+	for (i = 0; i < 4; i++) ss << dis(gen);
+	ss << "-4";
+	for (i = 0; i < 3; i++) ss << dis(gen);
+	ss << "-";
+	ss << dis2(gen);
+	for (i = 0; i < 3; i++) ss << dis(gen);
+	ss << "-";
+	for (i = 0; i < 12; i++) ss << dis(gen);
+	return ss.str();
+}
 
+PriceBucket::PriceBucket(double price) : price(price) {}
 
-	string generateUUID() {
-		stringstream ss;
-		int i;
-		ss << std::hex;
-		for (i = 0; i < 8; i++) ss << dis(gen);
-		ss << "-";
-		for (i = 0; i < 4; i++) ss << dis(gen);
-		ss << "-4";
-		for (i = 0; i < 3; i++) ss << dis(gen);
-		ss << "-";
-		ss << dis2(gen);
-		for (i = 0; i < 3; i++) ss << dis(gen);
-		ss << "-";
-		for (i = 0; i < 12; i++) ss << dis(gen);
-		return ss.str();
-	}
-
-	Order(std::string security, bool sell, double quantity, double price = -1.0) {
-		this->identifier = generateUUID();
-		this->security = security;
-		this->type = (sell) ? SELL : BUY;
-		this->total_quantity = quantity;
-		this->quantity = quantity;
-		this->price = price;
-		this->fulfilled = NOT_FULFILLED;
-	}
-
-	void print() {
-		logger->info("  Order {}:", this->identifier);
-		logger->info("    Price: {:.6}, Quantity: {:.6}, Fulfilled: {}", this->price, this->quantity, ((this->fulfilled == NOT_FULFILLED) ? "no" : (this->fulfilled == FULLY_FULFILLED) ? "yes" : ((this->fulfilled == PARTIALLY_FULFILLED) ? "partially" : "cancelled")));
-		if (this->fulfilled == PARTIALLY_FULFILLED) {
-			logger->info("      Filled: {:.6}/{:.6}", this->total_quantity - quantity, this->total_quantity);
-		}
-	}
-
-};
+void Order::print() const {
+    logger->info("  Price: {:.6}, Quantity: {:.6}, Fulfilled: {}", price, quantity,
+                 (fulfilled == NOT_FULFILLED ? "no" :
+                  fulfilled == PARTIALLY_FULFILLED ? "partially" :
+                  fulfilled == FULLY_FULFILLED ? "yes" : "cancelled"));
+}

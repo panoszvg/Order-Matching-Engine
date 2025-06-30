@@ -1,4 +1,6 @@
-#include "Book.cpp"
+#include "Book.h"
+#include "Order.h"
+#include "Security.h"
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -44,14 +46,13 @@ int main() {
 		getline(ss,quantity, ',');
 		getline(ss,price, ',');
 
-		shared_ptr<Order> newOrder = make_shared<Order>(security, (sell == "SELL") ? 1 : 0, stod(quantity), stod(price));
+		shared_ptr<Order> newOrder = make_shared<Order>(security, (sell == "SELL") ? OrderType::SELL : OrderType::BUY, stod(quantity), stod(price));
 		try {
 			book->insertOrder(newOrder);
 		} catch (const invalid_argument& arg) {
-			cerr << "Order rejected: " << arg.what() << endl;
+			logger->error("Order rejected: {}", arg.what());
 		}
 	}
-
 
 	logger->info("Book after ending:");
 	book->printBuyOrders();
