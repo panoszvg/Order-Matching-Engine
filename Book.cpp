@@ -207,13 +207,9 @@ public:
 
 		double orderPriceBucket = getPriceBucket(newOrder->price, securities[newOrder->security]->getBucketSize());
 
-		auto it = sellBuckets.begin();
-		auto endIt = it;
-		while (endIt != sellBuckets.end() && endIt->first <= orderPriceBucket) {
-			++endIt;
-		}
+		auto endIt = sellBuckets.upper_bound(orderPriceBucket);
 
-		for (; it != endIt; ++it) {
+		for (auto it = sellBuckets.begin(); it != endIt; ++it) {
 			auto& bucket = it->second;
 			if (bucket->bucket.empty()) continue;
 
@@ -267,14 +263,11 @@ public:
 
 		double orderPriceBucket = getPriceBucket(newOrder->price, securities[newOrder->security]->getBucketSize());
 
-		auto it = buyBuckets.rbegin();
-		auto endIt = it;
-		while (endIt != buyBuckets.rend() && endIt->first >= orderPriceBucket) {
-			++endIt;
-		}
+		for (auto rIt = buyBuckets.rbegin(); rIt != buyBuckets.rend(); ++rIt) {
+			if (rIt->first < orderPriceBucket)
+				break;
 
-		for (; it != endIt; ++it) {
-			auto& bucket = it->second;
+			auto& bucket = rIt->second;
 			if (bucket->bucket.empty()) continue;
 
 			matchSellAgainstBucket(newOrder, bucket);
@@ -297,9 +290,15 @@ public:
 		double orderSecurityTick = orderSecurity->getTickSize();
 
 		if (!isPriceTickAligned(order->price, orderSecurityTick)) {
-			std::ostringstream oss;
+			ostringstream oss;
 			oss << "Order price (" << order->price << ") does not align with tick size (" << orderSecurityTick << ")";
-			throw std::invalid_argument(oss.str());
+			throw invalid_argument(oss.str());
+		}
+
+		if (order->quantity <= 0.0) {
+			ostringstream oss;
+			oss << "Quantity (" << order->quantity << ") must be greater than zero";
+			throw invalid_argument(oss.str());
 		}
 
 		matchOrder(order);
