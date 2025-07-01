@@ -67,6 +67,10 @@ public:
     void matchSellOrder(shared_ptr<Order> order);
     void matchBuyAgainstBucket(shared_ptr<Order>& buyOrder, shared_ptr<SellBucket>& bucket);
     void matchSellAgainstBucket(shared_ptr<Order>& sellOrder, shared_ptr<BuyBucket>& bucket);
+	shared_ptr<Order> orderLookup(const string& orderId);
+	void cancelOrder(const string& orderId);
+	void modifyOrder(const string& orderId, double newQty, double newPrice);
+
 
     void cleanUpBuckets(shared_ptr<Order> order);
     void printBuyOrders() const;

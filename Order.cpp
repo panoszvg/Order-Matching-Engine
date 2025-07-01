@@ -31,8 +31,6 @@ string generateUUID() {
 	return ss.str();
 }
 
-PriceBucket::PriceBucket(double price) : price(price) {}
-
 void Order::print() const {
     logger->info("  Price: {:.6}, Quantity: {:.6}, Fulfilled: {}", price, quantity,
                  (fulfilled == NOT_FULFILLED ? "no" :

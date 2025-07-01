@@ -75,7 +75,7 @@ void Book::printSellOrdersFromAll() const {
 	logger->info("# Sell Orders");
 	logger->info("=============");
 	for (auto& [securityString, order] : allOrders) {
-		if (order->type == OrderType::SELL && (order->fulfilled == Fulfilled::NOT_FULFILLED || order->fulfilled == Fulfilled::PARTIALLY_FULFILLED)) {
+		if (order->type == OrderType::SELL && (order->fulfilled == NOT_FULFILLED || order->fulfilled == PARTIALLY_FULFILLED)) {
 			order->print();
 		}
 	}
@@ -110,7 +110,7 @@ void Book::printBuyOrdersFromAll() const {
 	logger->info("# Buy Orders");
 	logger->info("=============");
 	for (auto& [securityString, order] : allOrders) {
-		if (order->type == OrderType::BUY && (order->fulfilled == Fulfilled::NOT_FULFILLED || order->fulfilled == Fulfilled::PARTIALLY_FULFILLED)) {
+		if (order->type == OrderType::BUY && (order->fulfilled == NOT_FULFILLED || order->fulfilled == PARTIALLY_FULFILLED)) {
 			order->print();
 		}
 	}
@@ -118,10 +118,16 @@ void Book::printBuyOrdersFromAll() const {
 
 void Book::matchBuyAgainstBucket(shared_ptr<Order>& buyOrder, shared_ptr<SellBucket>& bucket) {
 	while (!bucket->bucket.empty()
-		&& buyOrder->fulfilled != Fulfilled::FULLY_FULFILLED
-		&& buyOrder->fulfilled != Fulfilled::CANCELLED)
+		&& buyOrder->fulfilled != FULLY_FULFILLED
+		&& buyOrder->fulfilled != CANCELLED)
 	{
 		auto sellOrder = bucket->bucket.top();
+		if (sellOrder->fulfilled == FULLY_FULFILLED
+		 || sellOrder->fulfilled == CANCELLED)
+		{
+			bucket->bucket.pop();
+			continue;
+		}
 
 		// Stop if the sell price is too high
 		if (compareDoubles(buyOrder->price, sellOrder->price) < 0)
@@ -136,16 +142,16 @@ void Book::matchBuyAgainstBucket(shared_ptr<Order>& buyOrder, shared_ptr<SellBuc
 
 		// Update fulfillment status for buy order
 		if (compareDoubles(buyOrder->quantity, 0.0) == 0)
-			buyOrder->fulfilled = Fulfilled::FULLY_FULFILLED;
+			buyOrder->fulfilled = FULLY_FULFILLED;
 		else
-			buyOrder->fulfilled = Fulfilled::PARTIALLY_FULFILLED;
+			buyOrder->fulfilled = PARTIALLY_FULFILLED;
 
 		// Update fulfillment status for sell order
 		if (compareDoubles(sellOrder->quantity, 0.0) == 0) {
-			sellOrder->fulfilled = Fulfilled::FULLY_FULFILLED;
+			sellOrder->fulfilled = FULLY_FULFILLED;
 			bucket->bucket.pop();
 		} else {
-			sellOrder->fulfilled = Fulfilled::PARTIALLY_FULFILLED;
+			sellOrder->fulfilled = PARTIALLY_FULFILLED;
 		}
 
 		// Reduce total quantity in the bucket
@@ -174,11 +180,16 @@ void Book::matchBuyOrder(shared_ptr<Order> newOrder) {
 
 void Book::matchSellAgainstBucket(shared_ptr<Order>& sellOrder, shared_ptr<BuyBucket>& bucket) {
 	while (!bucket->bucket.empty()
-		&& sellOrder->fulfilled != Fulfilled::FULLY_FULFILLED
-		&& sellOrder->fulfilled != Fulfilled::CANCELLED)
+		&& sellOrder->fulfilled != FULLY_FULFILLED
+		&& sellOrder->fulfilled != CANCELLED)
 	{
 		auto buyOrder = bucket->bucket.top();
-
+		if (buyOrder->fulfilled == FULLY_FULFILLED
+		 || buyOrder->fulfilled == CANCELLED)
+		{
+			bucket->bucket.pop();
+			continue;
+		}
 		// Stop if the buy price is too low
 		if (compareDoubles(sellOrder->price, buyOrder->price) > 0)
 			break;
@@ -192,16 +203,16 @@ void Book::matchSellAgainstBucket(shared_ptr<Order>& sellOrder, shared_ptr<BuyBu
 
 		// Update fulfillment status for sell order
 		if (compareDoubles(sellOrder->quantity, 0.0) == 0)
-			sellOrder->fulfilled = Fulfilled::FULLY_FULFILLED;
+			sellOrder->fulfilled = FULLY_FULFILLED;
 		else
-			sellOrder->fulfilled = Fulfilled::PARTIALLY_FULFILLED;
+			sellOrder->fulfilled = PARTIALLY_FULFILLED;
 
 		// Update fulfillment status for buy order
 		if (compareDoubles(buyOrder->quantity, 0.0) == 0) {
-			buyOrder->fulfilled = Fulfilled::FULLY_FULFILLED;
+			buyOrder->fulfilled = FULLY_FULFILLED;
 			bucket->bucket.pop();
 		} else {
-			buyOrder->fulfilled = Fulfilled::PARTIALLY_FULFILLED;
+			buyOrder->fulfilled = PARTIALLY_FULFILLED;
 		}
 
 		// Reduce total quantity in the bucket
@@ -228,6 +239,61 @@ void Book::matchSellOrder(shared_ptr<Order> newOrder) {
 	}
 }
 
+shared_ptr<Order> Book::orderLookup(const string& orderId) {
+	return allOrders.at(orderId);
+}
+
+void Book::cancelOrder(const string& orderId) {
+	try {
+		auto order = orderLookup(orderId);
+
+		if (order->fulfilled == CANCELLED || order->fulfilled == FULLY_FULFILLED) {
+			return;
+		}
+
+		double bucketPrice = getPriceBucket(order->price, securities[order->security]->getBucketSize());
+		if (order->type == BUY) {
+			auto& bucket = buyOrders[order->security][bucketPrice];
+			if (order->quantity > 0) {
+				bucket->total_quantity -= order->quantity;
+			}
+		} else {
+			auto& bucket = sellOrders[order->security][bucketPrice];
+			if (order->quantity > 0) {
+				bucket->total_quantity -= order->quantity;
+			}
+		}
+
+		order->fulfilled = CANCELLED;
+	} catch (const std::out_of_range &e) {
+		logger->error("Order {} doesn't exist", orderId);
+	}
+}
+
+void Book::modifyOrder(const string& orderId, double newQty, double newPrice) {
+	try {
+		auto order = orderLookup(orderId);
+		
+		// Check new quantity against the existing quantity
+		if (newQty < order->quantity) {
+			std::ostringstream oss;
+			oss << "New quantity (" << newQty << ") cannot be less than the existing quantity (" << order->quantity << ")";
+			throw std::invalid_argument(oss.str());
+		}
+		
+		cancelOrder(orderId);
+		shared_ptr<Order> modifiedOrder = std::make_shared<Order>(order->security, order->type, newQty, newPrice);
+
+		try {
+			insertOrder(modifiedOrder);
+		} catch (const std::invalid_argument& arg) {
+			logger->error("Order rejected: {}", arg.what());
+		}
+
+	} catch (const std::out_of_range &e) {
+		logger->error("Order {} doesn't exist", orderId);
+	}
+}
 
 void Book::matchOrder(shared_ptr<Order> order) {
 	if (order->type == OrderType::BUY)
@@ -263,7 +329,7 @@ void Book::insertOrder(shared_ptr<Order> order) {
 
 	matchOrder(order);
 	auto newOrder = order;
-	if (order->fulfilled != Fulfilled::FULLY_FULFILLED && order->fulfilled != Fulfilled::CANCELLED) {
+	if (order->fulfilled != FULLY_FULFILLED && order->fulfilled != CANCELLED) {
 		double priceBucket = getPriceBucket(order->price, this->securities[order->security]->getBucketSize());
 		if (order->type == OrderType::BUY) {
 			if (buyOrders[order->security].find(priceBucket) == buyOrders[order->security].end())

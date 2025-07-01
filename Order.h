@@ -40,14 +40,6 @@ public:
     void print() const;
 };
 
-class PriceBucket {
-public:
-    explicit PriceBucket(double price);
-
-    double price;
-    queue<shared_ptr<Order>> bucket;
-};
-
 string generateUUID();
 
 #endif // ORDER_H
