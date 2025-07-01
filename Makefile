@@ -2,7 +2,7 @@ CXX = g++
 CXXFLAGS = -std=c++17 -pthread
 INCLUDES = -I./
 LIBS = -lspdlog -lfmt
-SRC = main.cpp Book.cpp Order.cpp Security.cpp Matcher.cpp
+SRC = main.cpp Book.cpp Order.cpp Security.cpp Matcher.cpp Parser.cpp
 OBJ = $(SRC:.cpp=.o)
 TARGET = order_matching_engine
 

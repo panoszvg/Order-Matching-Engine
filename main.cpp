@@ -1,5 +1,6 @@
 #include "Book.h"
 #include "Order.h"
+#include "Parser.h"
 #include "Security.h"
 #include <iostream>
 #include <fstream>
@@ -33,23 +34,17 @@ int main() {
 	book->addSecurities(securities);
 	string line{""};
 	vector<string> lines;
-	ifstream file("input.txt");
+	ifstream file("FIX_Messages.csv");
 
 	while (getline(file, line)) {
 		lines.push_back(line);
 	}
 	file.close();
 
+	shared_ptr<Parser> parser = make_shared<Parser>();
+
 	for (auto& line : lines) {
-		string security, sell, quantity, price;
-		stringstream ss(line);
-
-		getline(ss,security, ',');
-		getline(ss,sell, ',');
-		getline(ss,quantity, ',');
-		getline(ss,price, ',');
-
-		shared_ptr<Order> newOrder = make_shared<Order>(security, (sell == "SELL") ? OrderType::SELL : OrderType::BUY, stod(quantity), stod(price));
+		shared_ptr<Order> newOrder = parser->parse(line);
 		try {
 			book->insertOrder(newOrder);
 		} catch (const std::invalid_argument& arg) {
