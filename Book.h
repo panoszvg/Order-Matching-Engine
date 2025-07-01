@@ -1,7 +1,12 @@
 #ifndef BOOK_H
 #define BOOK_H
 
+#pragma once
+
+#include "Math.h"
 #include "Order.h"
+#include "Buckets.h"
+#include "Matcher.h"
 #include "Security.h"
 #include <map>
 #include <deque>
@@ -18,66 +23,35 @@ using std::shared_ptr;
 using std::unordered_map;
 using std::priority_queue;
 
-constexpr double EPSILON = 1e-8;
 
 class Book {
+	friend class Matcher;
+
 private:
-	class CompareBuy {
-	public:
-		bool operator() (shared_ptr<Order> o1, shared_ptr<Order> o2) {
-			return o1->price < o2->price;
-		}
-	};
-	class CompareSell {
-	public:
-		bool operator() (shared_ptr<Order> o1, shared_ptr<Order> o2) {
-			return o1->price > o2->price;
-		}
-	};
-
-	class BuyBucket {
-	public:
-		priority_queue<shared_ptr<Order>, deque<shared_ptr<Order>>, CompareBuy> bucket;
-		double total_quantity = 0;
-	};
-
-	class SellBucket {
-	public:
-		priority_queue<shared_ptr<Order>, deque<shared_ptr<Order>>, CompareSell> bucket;
-		double total_quantity = 0;
-	};
-
     unordered_map<string, map<double, shared_ptr<BuyBucket>>> buyOrders;
     unordered_map<string, map<double, shared_ptr<SellBucket>>> sellOrders;
     unordered_map<string, shared_ptr<Security>> securities;
-
     unordered_map<string, shared_ptr<Order>> allOrders;
-
-    double getPriceBucket(double price, double bucketSize);
-    int compareDoubles(double a, double b);
-    bool isPriceTickAligned(double price, double tick);
+	Matcher matcher;
 
 public:
     Book();
 
     void addSecurities(vector<shared_ptr<Security>>& securities);
     void insertOrder(shared_ptr<Order> order);
-    void matchOrder(shared_ptr<Order> order);
-    void matchBuyOrder(shared_ptr<Order> order);
-    void matchSellOrder(shared_ptr<Order> order);
-    void matchBuyAgainstBucket(shared_ptr<Order>& buyOrder, shared_ptr<SellBucket>& bucket);
-    void matchSellAgainstBucket(shared_ptr<Order>& sellOrder, shared_ptr<BuyBucket>& bucket);
-	shared_ptr<Order> orderLookup(const string& orderId);
 	void cancelOrder(const string& orderId);
 	void modifyOrder(const string& orderId, double newQty, double newPrice);
+	shared_ptr<Order> orderLookup(const string& orderId);
 
+    unordered_map<string, shared_ptr<Security>>& getSecurities();
+    unordered_map<string, map<double, shared_ptr<BuyBucket>>>& getBuyOrders();
+    unordered_map<string, map<double, shared_ptr<SellBucket>>>& getSellOrders();
 
     void cleanUpBuckets(shared_ptr<Order> order);
     void printBuyOrders() const;
     void printBuyOrdersFromAll() const;
     void printSellOrders() const;
     void printSellOrdersFromAll() const;
-    void printOrderBook() const;
 
 };
 
