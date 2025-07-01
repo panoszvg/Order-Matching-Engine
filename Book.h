@@ -8,6 +8,7 @@
 #include "Buckets.h"
 #include "Matcher.h"
 #include "Security.h"
+#include "IOrderBook.h"
 #include <map>
 #include <deque>
 #include <queue>
@@ -20,11 +21,12 @@ using std::map;
 using std::deque;
 using std::vector;
 using std::shared_ptr;
+using std::ostringstream;
 using std::unordered_map;
 using std::priority_queue;
+using std::invalid_argument;
 
-
-class Book {
+class Book : public IOrderBook {
 	friend class Matcher;
 
 private:
@@ -43,15 +45,15 @@ public:
 	void modifyOrder(const string& orderId, double newQty, double newPrice);
 	shared_ptr<Order> orderLookup(const string& orderId);
 
-    unordered_map<string, shared_ptr<Security>>& getSecurities();
-    unordered_map<string, map<double, shared_ptr<BuyBucket>>>& getBuyOrders();
-    unordered_map<string, map<double, shared_ptr<SellBucket>>>& getSellOrders();
+    unordered_map<string, shared_ptr<Security>>& getSecurities() override;
+    unordered_map<string, map<double, shared_ptr<BuyBucket>>>& getBuyOrders() override;
+    unordered_map<string, map<double, shared_ptr<SellBucket>>>& getSellOrders() override;
 
-    void cleanUpBuckets(shared_ptr<Order> order);
-    void printBuyOrders() const;
-    void printBuyOrdersFromAll() const;
-    void printSellOrders() const;
-    void printSellOrdersFromAll() const;
+    void cleanUpBuckets(shared_ptr<Order> order) override;
+    void printBuyOrders() override;
+    void printBuyOrdersFromAll() override;
+    void printSellOrders() override;
+    void printSellOrdersFromAll() override;
 
 };
 

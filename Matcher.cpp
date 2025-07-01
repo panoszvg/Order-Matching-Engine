@@ -124,7 +124,7 @@ void Matcher::matchSellAgainstBucket(std::shared_ptr<Order>& sellOrder, std::sha
 	}
 }
 
-Matcher::Matcher(Book& book) : book(book){}
+Matcher::Matcher(IOrderBook& book) : book(book){}
 
 void Matcher::matchOrder(std::shared_ptr<Order> order) {
     if (order->type == OrderType::BUY)

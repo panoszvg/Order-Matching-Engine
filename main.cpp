@@ -6,7 +6,10 @@
 #include <sstream>
 #include <string>
 #include <vector>
-using namespace std;
+
+using std::ifstream;
+using std::make_shared;
+using std::stringstream;
 
 /*	This is a function that creates securities. Ideally,
 	it would not be used every time the application started,
@@ -24,7 +27,7 @@ int main() {
 	logger->info("");
 
 
-	unique_ptr<Book> book = make_unique<Book>();
+	shared_ptr<IOrderBook> book = std::make_shared<Book>();
 	vector<shared_ptr<Security>> securities;
 	createSecurities(securities);
 	book->addSecurities(securities);
@@ -49,7 +52,7 @@ int main() {
 		shared_ptr<Order> newOrder = make_shared<Order>(security, (sell == "SELL") ? OrderType::SELL : OrderType::BUY, stod(quantity), stod(price));
 		try {
 			book->insertOrder(newOrder);
-		} catch (const invalid_argument& arg) {
+		} catch (const std::invalid_argument& arg) {
 			logger->error("Order rejected: {}", arg.what());
 		}
 	}

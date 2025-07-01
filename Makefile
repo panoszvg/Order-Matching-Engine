@@ -1,5 +1,5 @@
 CXX = g++
-CXXFLAGS = -std=c++17 -pthread -Wall -Wextra
+CXXFLAGS = -std=c++17 -pthread
 INCLUDES = -I./
 LIBS = -lspdlog -lfmt
 SRC = main.cpp Book.cpp Order.cpp Security.cpp Matcher.cpp

@@ -17,28 +17,28 @@ void Book::insertOrder(shared_ptr<Order> order) {
 	double orderSecurityTick = orderSecurity->getTickSize();
 	
 	if (compareDoubles(order->price, 0.0) <= 0) {
-		std::ostringstream oss;
+		ostringstream oss;
 		oss << "Price (" << order->price << ") must be greater than zero";
-		throw std::invalid_argument(oss.str());
+		throw invalid_argument(oss.str());
 	}
 	
 	if (compareDoubles(order->quantity, 0.0) <= 0) {
-		std::ostringstream oss;
+		ostringstream oss;
 		oss << "Quantity (" << order->quantity << ") must be greater than zero";
-		throw std::invalid_argument(oss.str());
+		throw invalid_argument(oss.str());
 	}
 	
 	if (!isPriceTickAligned(order->price, orderSecurityTick)) {
-		std::ostringstream oss;
+		ostringstream oss;
 		oss << "Order price (" << order->price << ") does not align with tick size (" << orderSecurityTick << ")";
-		throw std::invalid_argument(oss.str());
+		throw invalid_argument(oss.str());
 	}
 	
 	matcher.matchOrder(order);
 	auto newOrder = order;
 	if (order->fulfilled != FULLY_FULFILLED && order->fulfilled != CANCELLED) {
 		double priceBucket = getPriceBucket(order->price, this->securities[order->security]->getBucketSize());
-		if (order->type == OrderType::BUY) {
+		if (order->type == BUY) {
 			if (buyOrders[order->security].find(priceBucket) == buyOrders[order->security].end())
 			buyOrders[order->security][priceBucket] = std::make_shared<BuyBucket>();
 			buyOrders[order->security][priceBucket]->bucket.push(newOrder);	
@@ -87,9 +87,9 @@ void Book::modifyOrder(const string& orderId, double newQty, double newPrice) {
 		
 		// Check new quantity against the existing quantity
 		if (newQty < order->quantity) {
-			std::ostringstream oss;
+			ostringstream oss;
 			oss << "New quantity (" << newQty << ") cannot be less than the existing quantity (" << order->quantity << ")";
-			throw std::invalid_argument(oss.str());
+			throw invalid_argument(oss.str());
 		}
 		
 		cancelOrder(orderId);
@@ -97,7 +97,7 @@ void Book::modifyOrder(const string& orderId, double newQty, double newPrice) {
 		
 		try {
 			insertOrder(modifiedOrder);
-		} catch (const std::invalid_argument& arg) {
+		} catch (const invalid_argument& arg) {
 			logger->error("Order rejected: {}", arg.what());
 		}
 		
@@ -122,7 +122,7 @@ unordered_map<string, map<double, shared_ptr<SellBucket>>>& Book::getSellOrders(
 }
 
 void Book::cleanUpBuckets(shared_ptr<Order> order){
-	if (order->type == OrderType::BUY) {
+	if (order->type == BUY) {
 		auto& book = sellOrders[order->security];
 		for (auto it = book.begin(); it != book.end(); ) {
 			if (it->second->bucket.empty())
@@ -142,7 +142,7 @@ void Book::cleanUpBuckets(shared_ptr<Order> order){
 	}
 }
 
-void Book::printBuyOrders() const {
+void Book::printBuyOrders() {
 	if (buyOrders.empty()) {
 		logger->info("# No Buy Orders");
 		return;
@@ -163,7 +163,7 @@ void Book::printBuyOrders() const {
 	}	
 }	
 
-void Book::printBuyOrdersFromAll() const {
+void Book::printBuyOrdersFromAll() {
 	if (buyOrders.empty()) {
 		logger->info("# No Buy Orders");
 		return;
@@ -171,13 +171,13 @@ void Book::printBuyOrdersFromAll() const {
 	logger->info("# Buy Orders");
 	logger->info("=============");
 	for (auto& [securityString, order] : allOrders) {
-		if (order->type == OrderType::BUY && (order->fulfilled == NOT_FULFILLED || order->fulfilled == PARTIALLY_FULFILLED)) {
+		if (order->type == BUY && (order->fulfilled == NOT_FULFILLED || order->fulfilled == PARTIALLY_FULFILLED)) {
 			order->print();
 		}	
 	}	
 }	
 
-void Book::printSellOrders() const {
+void Book::printSellOrders() {
 	if (sellOrders.empty()) {
 		logger->info("No Sell Orders");
 		return;
@@ -198,7 +198,7 @@ void Book::printSellOrders() const {
 	}	
 }	
 
-void Book::printSellOrdersFromAll() const {
+void Book::printSellOrdersFromAll() {
 	if (sellOrders.empty()) {
 		logger->info("No Sell Orders");
 		return;
@@ -206,7 +206,7 @@ void Book::printSellOrdersFromAll() const {
 	logger->info("# Sell Orders");
 	logger->info("=============");
 	for (auto& [securityString, order] : allOrders) {
-		if (order->type == OrderType::SELL && (order->fulfilled == NOT_FULFILLED || order->fulfilled == PARTIALLY_FULFILLED)) {
+		if (order->type == SELL && (order->fulfilled == NOT_FULFILLED || order->fulfilled == PARTIALLY_FULFILLED)) {
 			order->print();
 		}	
 	}	

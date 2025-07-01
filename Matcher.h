@@ -5,15 +5,16 @@
 
 #include "Math.h"
 #include "Order.h"
+#include "IMatcher.h"
 #include <memory>
 
-class Book;
+class IOrderBook;
 class BuyBucket;
 class SellBucket;
 
-class Matcher {
+class Matcher : public IMatcher {
 private:
-    Book& book;
+    IOrderBook& book;
 
     void matchBuyOrder(std::shared_ptr<Order> order);
     void matchSellOrder(std::shared_ptr<Order> order);
@@ -21,9 +22,9 @@ private:
     void matchSellAgainstBucket(std::shared_ptr<Order>& sellOrder, std::shared_ptr<BuyBucket>& bucket);
 
 public:
-    Matcher(Book& book);
+    Matcher(IOrderBook& book);
 
-    void matchOrder(std::shared_ptr<Order> order);
+    void matchOrder(std::shared_ptr<Order> order) override;
 
 };
 
