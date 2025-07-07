@@ -1,20 +1,14 @@
 #include "Parser.h"
 
 shared_ptr<Order> Parser::parse(const string& message) {
-    std::unordered_map<int, string> fields;
-    std::stringstream ss(message);
-    string token;
+    shared_ptr<FixMessage> newMessage = make_shared<FixMessage>();
+    newMessage->populate(message);
+    string  tag_55 = newMessage->getValue(55);
+    int     tag_54 = stoi(newMessage->getValue(54));
+    double  tag_38 = stod(newMessage->getValue(38));
+    double  tag_44 = stod(newMessage->getValue(44));
 
-    while (std::getline(ss, token, SOH)) {
-        auto equalPos = token.find('=');
-        if (equalPos != string::npos) {
-            int tag = stoi(token.substr(0, equalPos));
-            string value = token.substr(equalPos + 1);
-            fields[tag] = value;
-        }
-    }
-
-    auto newOrder = make_shared<Order>(fields[55], (stoi(fields[54]) == 1) ? BUY : SELL, stod(fields[38]), stod(fields[44]));
+    auto newOrder = make_shared<Order>(tag_55, (tag_54 == 1) ? BUY : SELL, tag_38, tag_44);
     return newOrder;
 }
 

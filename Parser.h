@@ -4,6 +4,7 @@
 #pragma once
 
 #include "Order.h"
+#include "messages/FixMessage.h"
 #include <memory>
 #include <string>
 #include <sstream>
@@ -12,8 +13,6 @@
 using std::string;
 using std::shared_ptr;
 using std::make_shared;
-
-constexpr char SOH = '\x01';
 
 class Parser {
 public:
