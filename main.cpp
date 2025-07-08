@@ -2,6 +2,7 @@
 #include "Order.h"
 #include "Parser.h"
 #include "Security.h"
+#include "strategy/PriceTimePriorityStrategy.h"
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -27,8 +28,9 @@ int main() {
 	logger->info("PROGRAM START");
 	logger->info("");
 
-
-	shared_ptr<IOrderBook> book = std::make_shared<Book>();
+	auto strategy = std::make_unique<PriceTimePriorityStrategy>();
+	auto book = std::make_shared<Book>(std::move(strategy));
+	book->setMatchingStrategy(std::make_unique<PriceTimePriorityStrategy>()); // simple test
 	vector<shared_ptr<Security>> securities;
 	createSecurities(securities);
 	book->addSecurities(securities);

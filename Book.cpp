@@ -1,7 +1,8 @@
 #include "Book.h"
+#include "strategy/PriceTimePriorityStrategy.h"
 #include <string>
 
-Book::Book() : matcher(*this) {}
+Book::Book(std::unique_ptr<IOrderMatchingStrategy> matcher) : matcher(std::move(matcher)) {}
 
 void Book::addSecurities(vector<shared_ptr<Security>>& securities) {
 	for (auto& security : securities) {
@@ -34,7 +35,7 @@ void Book::insertOrder(shared_ptr<Order> order) {
 		throw invalid_argument(oss.str());
 	}
 	
-	matcher.matchOrder(order);
+	matcher->matchOrder(order, *this);
 	auto newOrder = order;
 	if (order->fulfilled != FULLY_FULFILLED && order->fulfilled != CANCELLED) {
 		double priceBucket = getPriceBucket(order->price, this->securities[order->security]->getBucketSize());
@@ -104,6 +105,10 @@ void Book::modifyOrder(const string& orderId, double newQty, double newPrice) {
 	} catch (const std::out_of_range &e) {
 		logger->error("Order {} doesn't exist", orderId);
 	}
+}
+
+void Book::setMatchingStrategy(std::unique_ptr<IOrderMatchingStrategy> newMatcher) {
+	matcher = std::move(newMatcher);
 }
 
 shared_ptr<Order> Book::orderLookup(const string& orderId) {

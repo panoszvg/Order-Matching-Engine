@@ -1,7 +1,9 @@
-#include "Matcher.h"
-#include "Book.h"
+#include "PriceTimePriorityStrategy.h"
+#include "../headers/Buckets.h"
+#include "../headers/Math.h"
+#include "../IOrderBook.h"
 
-void Matcher::matchBuyOrder(std::shared_ptr<Order> newOrder) {
+void PriceTimePriorityStrategy::matchBuyOrder(std::shared_ptr<Order> newOrder, IOrderBook& book) {
 	if (book.getSellOrders().empty()) return;
 
 	auto& sellBuckets = book.getSellOrders()[newOrder->security];
@@ -19,7 +21,7 @@ void Matcher::matchBuyOrder(std::shared_ptr<Order> newOrder) {
 	}
 }
 
-void Matcher::matchSellOrder(std::shared_ptr<Order> newOrder) {
+void PriceTimePriorityStrategy::matchSellOrder(std::shared_ptr<Order> newOrder, IOrderBook& book) {
     if (book.getBuyOrders().empty()) return;
 
 	auto& buyBuckets = book.getBuyOrders()[newOrder->security];
@@ -38,7 +40,7 @@ void Matcher::matchSellOrder(std::shared_ptr<Order> newOrder) {
 	}
 }
 
-void Matcher::matchBuyAgainstBucket(std::shared_ptr<Order>& buyOrder, std::shared_ptr<SellBucket>& bucket) {
+void PriceTimePriorityStrategy::matchBuyAgainstBucket(std::shared_ptr<Order>& buyOrder, std::shared_ptr<SellBucket>& bucket) {
     	while (!bucket->bucket.empty()
 		&& buyOrder->fulfilled != FULLY_FULFILLED
 		&& buyOrder->fulfilled != CANCELLED)
@@ -82,7 +84,7 @@ void Matcher::matchBuyAgainstBucket(std::shared_ptr<Order>& buyOrder, std::share
 }
 
 
-void Matcher::matchSellAgainstBucket(std::shared_ptr<Order>& sellOrder, std::shared_ptr<BuyBucket>& bucket) {
+void PriceTimePriorityStrategy::matchSellAgainstBucket(std::shared_ptr<Order>& sellOrder, std::shared_ptr<BuyBucket>& bucket) {
 	while (!bucket->bucket.empty()
 		&& sellOrder->fulfilled != FULLY_FULFILLED
 		&& sellOrder->fulfilled != CANCELLED)
@@ -124,11 +126,9 @@ void Matcher::matchSellAgainstBucket(std::shared_ptr<Order>& sellOrder, std::sha
 	}
 }
 
-Matcher::Matcher(IOrderBook& book) : book(book){}
-
-void Matcher::matchOrder(std::shared_ptr<Order> order) {
+void PriceTimePriorityStrategy::matchOrder(std::shared_ptr<Order> order, IOrderBook& book) {
     if (order->type == OrderType::BUY)
-		matchBuyOrder(order);
-	else matchSellOrder(order);
+		matchBuyOrder(order, book);
+	else matchSellOrder(order, book);
 	book.cleanUpBuckets(order);
 }
