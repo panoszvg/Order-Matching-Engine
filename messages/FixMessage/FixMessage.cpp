@@ -35,6 +35,16 @@ void FixMessage::populate(const string& message) {
 
 void FixMessage::isValid() {}
 
+shared_ptr<Order> FixMessage::makeOrder() {
+	string  tag_55 = this->getValue(55);
+    int     tag_54 = stoi(this->getValue(54));
+    double  tag_38 = stod(this->getValue(38));
+    double  tag_44 = stod(this->getValue(44));
+
+    shared_ptr<Order> newOrder = make_shared<Order>(tag_55, (tag_54 == 1) ? BUY : SELL, tag_38, tag_44);
+    return newOrder;
+}
+
 string FixMessage::getValue(int tag) {
 	auto fields = header->getFields();
 	if (fields.find(tag) != fields.end()) {

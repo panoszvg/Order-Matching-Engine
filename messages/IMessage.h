@@ -12,6 +12,7 @@ class IMessage {
 public:
 	virtual void populate(const string& message) = 0;
 	virtual void isValid() = 0;
+	virtual shared_ptr<Order> makeOrder() = 0;
 	virtual ~IMessage() = default;
 };
 

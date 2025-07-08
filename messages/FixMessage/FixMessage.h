@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "IMessage.h"
+#include "../IMessage.h"
 #include "FixMap.h"
 #include <map>
 #include <memory>
@@ -24,6 +24,7 @@ public:
 	FixMessage();
 	void populate(const string& message) override;
 	void isValid() override;
+	shared_ptr<Order> makeOrder() override;
 	string getValue(int tag);
 
 	void print();

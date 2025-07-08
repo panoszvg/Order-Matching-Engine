@@ -44,7 +44,8 @@ int main() {
 	shared_ptr<Parser> parser = make_shared<Parser>();
 
 	for (auto& line : lines) {
-		shared_ptr<Order> newOrder = parser->parse(line);
+		auto newMessage = parser->parse(line);
+		auto newOrder = newMessage->makeOrder();
 		try {
 			book->insertOrder(newOrder);
 		} catch (const std::invalid_argument& arg) {
