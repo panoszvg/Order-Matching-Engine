@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "../../Logger.h"
 #include "../IMessage.h"
 #include "FixMap.h"
 #include <map>

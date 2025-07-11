@@ -4,15 +4,10 @@
 #include <string>
 #include <queue>
 #include <memory>
-#include <spdlog/spdlog.h>
-#include <spdlog/async.h>
-#include <spdlog/sinks/basic_file_sink.h>
 
 using std::string;
 using std::shared_ptr;
 using std::queue;
-
-extern std::shared_ptr<spdlog::logger> logger;
 
 enum OrderType {
     BUY,

@@ -1,10 +1,9 @@
 #include "Order.h"
+#include "Logger.h"
 #include <iostream>
 #include <random>
 #include <sstream>
 #include <iomanip>
-
-std::shared_ptr<spdlog::logger> logger = spdlog::basic_logger_mt<spdlog::async_factory>("order_logger", "logs/app.log", true);
 
 Order::Order(string security, OrderType type, double quantity, double price)
     : id(generateUUID()), security(std::move(security)), type(type), quantity(quantity), price(price), fulfilled(NOT_FULFILLED) {}

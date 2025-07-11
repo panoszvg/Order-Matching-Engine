@@ -2,6 +2,7 @@
 #define ISIMPLEMESSAGE_H
 
 #include "../IMessage.h"
+#include <unordered_map>
 
 class SimpleMessage : public IMessage {
 private:

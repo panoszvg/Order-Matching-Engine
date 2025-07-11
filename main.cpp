@@ -1,5 +1,6 @@
 #include "Book.h"
 #include "Order.h"
+#include "Logger.h"
 #include "Parser.h"
 #include "Security.h"
 #include "strategy/PriceTimePriorityStrategy.h"

@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "Logger.h"
 #include "IOrderBook.h"
 #include "strategy/IOrderMatchingStrategy.h"
 #include <map>
