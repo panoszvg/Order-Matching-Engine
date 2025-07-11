@@ -6,7 +6,7 @@ LIBS = -lspdlog -lfmt
 LIBS_TEST = $(LIBS) -lgmock_main -lgmock -lgtest
 
 SRC_CODE = 	Logger.cpp Order.cpp Security.cpp Book.cpp Parser.cpp \
-			strategy/PriceTimePriorityStrategy.cpp \
+			SecurityProvider.cpp strategy/PriceTimePriorityStrategy.cpp \
 			messages/FixMessage/FixMessage.cpp messages/FixMessage/FixMap.cpp \
 			messages/FixMessage/FixField.cpp messages/SimpleMessage/SimpleMessage.cpp
 SRC_MAIN = main.cpp
