@@ -16,7 +16,6 @@ using std::unordered_map;
 
 class IOrderBook {
 public:
-    virtual void addSecurities(std::vector<shared_ptr<Security>>& securities) {
     virtual void insertOrder(std::shared_ptr<Order> order) = 0;
     virtual void cancelOrder(const std::string& id) = 0;
     virtual void modifyOrder(const string& orderId, double newQty, double newPrice) = 0;
