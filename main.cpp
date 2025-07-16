@@ -17,14 +17,18 @@ int main() {
 	logger->info("PROGRAM START");
 	logger->info("");
 
-	auto strategy = std::make_unique<PriceTimePriorityStrategy>();
-	auto book = std::make_shared<Book>(std::move(strategy));
-	book->setMatchingStrategy(std::make_unique<PriceTimePriorityStrategy>());
-
+	std::unordered_map<string, shared_ptr<Book>> books;
+	
 	try {
 		SecurityProvider provider("input_files/securities.csv");
-		vector<shared_ptr<Security>> securities = provider.loadSecurities();
-		book->addSecurities(securities);
+		std::unordered_map<string, shared_ptr<Security>> securities = provider.loadSecurities();
+		for (auto [securityStr, security] : securities) {
+			auto strategy = std::make_unique<PriceTimePriorityStrategy>();
+			auto book = std::make_shared<Book>(std::move(strategy), security);
+			book->setMatchingStrategy(std::make_unique<PriceTimePriorityStrategy>());
+			book->setSecurity(std::move(security));
+			books[securityStr] = book;
+		}
 	} catch(std::exception &e) {
 		logger->error("Securities couldn't be read: {}", e.what());
 	}
@@ -44,15 +48,17 @@ int main() {
 		auto newMessage = parser->parse(line);
 		auto newOrder = newMessage->makeOrder();
 		try {
-			book->insertOrder(newOrder);
+			books[newOrder->security]->insertOrder(newOrder);
 		} catch (const std::invalid_argument& arg) {
 			logger->error("Order rejected: {}", arg.what());
 		}
 	}
 
-	logger->info("Book after ending:");
-	book->printBuyOrders();
-	book->printSellOrders();
+	for (auto& [security, book] : books) {
+		logger->info("{} Book after ending:", security);
+		book->printBuyOrders();
+		book->printSellOrders();
+	}
 
 	// for (auto& order : book->allOrders) {
 	// 	order.second->print();

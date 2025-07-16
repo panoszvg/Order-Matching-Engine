@@ -28,26 +28,26 @@ enum BOOK_STRATEGY { PRICE_TIME_PRIORITY };
 
 class Book : public IOrderBook {
 private:
-    unordered_map<string, map<double, shared_ptr<BuyBucket>>> buyOrders;
-    unordered_map<string, map<double, shared_ptr<SellBucket>>> sellOrders;
-    unordered_map<string, shared_ptr<Security>> securities;
     unordered_map<string, shared_ptr<Order>> allOrders;
+    map<double, shared_ptr<BuyBucket>> buyOrders;
+    map<double, shared_ptr<SellBucket>> sellOrders;
 	unique_ptr<IOrderMatchingStrategy> matcher;
     BOOK_STRATEGY strategy;
+    shared_ptr<Security> security;
 
 public:
-    explicit Book(std::unique_ptr<IOrderMatchingStrategy> matcher);
+    explicit Book(unique_ptr<IOrderMatchingStrategy> matcher, shared_ptr<Security> security);
 
-    void addSecurities(vector<shared_ptr<Security>>& securities);
     void insertOrder(shared_ptr<Order> order);
 	void cancelOrder(const string& orderId);
 	void modifyOrder(const string& orderId, double newQty, double newPrice);
     void setMatchingStrategy(std::unique_ptr<IOrderMatchingStrategy> newMatcher);
+    void setSecurity(std::shared_ptr<Security> security);
 	shared_ptr<Order> orderLookup(const string& orderId);
 
-    unordered_map<string, shared_ptr<Security>>& getSecurities() override;
-    unordered_map<string, map<double, shared_ptr<BuyBucket>>>& getBuyOrders() override;
-    unordered_map<string, map<double, shared_ptr<SellBucket>>>& getSellOrders() override;
+    shared_ptr<Security> getSecurity() override;
+    map<double, shared_ptr<BuyBucket>>& getBuyOrders() override;
+    map<double, shared_ptr<SellBucket>>& getSellOrders() override;
 
     void cleanUpBuckets(shared_ptr<Order> order) override;
     void printBuyOrders() override;

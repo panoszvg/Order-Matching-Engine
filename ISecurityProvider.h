@@ -6,10 +6,11 @@
 #include "Security.h"
 #include <vector>
 #include <memory>
+#include <unordered_map>
 
 struct ISecurityProvider {
 private:
-	virtual std::vector<std::shared_ptr<Security>> loadSecurities() = 0;
+	virtual std::unordered_map<string, std::shared_ptr<Security>> loadSecurities() = 0;
 
 public:
 	virtual ~ISecurityProvider() = default;

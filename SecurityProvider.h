@@ -11,6 +11,6 @@ private:
 
 public:
 	explicit SecurityProvider(string path) : path(std::move(path)) {}
-	std::vector<std::shared_ptr<Security>> loadSecurities() override;
+	std::unordered_map<string, std::shared_ptr<Security>> loadSecurities() override;
 
 };

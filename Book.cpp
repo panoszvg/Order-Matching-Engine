@@ -2,20 +2,12 @@
 #include "strategy/PriceTimePriorityStrategy.h"
 #include <string>
 
-Book::Book(std::unique_ptr<IOrderMatchingStrategy> matcher) : matcher(std::move(matcher)) {}
-
-void Book::addSecurities(vector<shared_ptr<Security>>& securities) {
-	for (auto& security : securities) {
-		this->securities[security->getSymbol()] = security;
-	}
-}	
+Book::Book(std::unique_ptr<IOrderMatchingStrategy> matcher, shared_ptr<Security> security) :
+	matcher(std::move(matcher)), security(std::move(security)) {}
 
 void Book::insertOrder(shared_ptr<Order> order) {
-	if (this->securities.find(order->security) == this->securities.end())
-	return;
-	
-	auto orderSecurity = this->securities[order->security];	
-	double orderSecurityTick = orderSecurity->getTickSize();
+
+	double orderSecurityTick = security->getTickSize();
 	
 	if (compareDoubles(order->price, 0.0) <= 0) {
 		ostringstream oss;
@@ -38,18 +30,18 @@ void Book::insertOrder(shared_ptr<Order> order) {
 	matcher->matchOrder(order, *this);
 	auto newOrder = order;
 	if (order->fulfilled != FULLY_FULFILLED && order->fulfilled != CANCELLED) {
-		double priceBucket = getPriceBucket(order->price, this->securities[order->security]->getBucketSize());
+		double priceBucket = getPriceBucket(order->price, security->getBucketSize());
 		if (order->type == BUY) {
-			if (buyOrders[order->security].find(priceBucket) == buyOrders[order->security].end())
-			buyOrders[order->security][priceBucket] = std::make_shared<BuyBucket>();
-			buyOrders[order->security][priceBucket]->bucket.push(newOrder);	
-			buyOrders[order->security][priceBucket]->total_quantity += newOrder->quantity;
+			if (buyOrders.find(priceBucket) == buyOrders.end())
+			buyOrders[priceBucket] = std::make_shared<BuyBucket>();
+			buyOrders[priceBucket]->bucket.push(newOrder);	
+			buyOrders[priceBucket]->total_quantity += newOrder->quantity;
 		}
 		else {
-			if (sellOrders[order->security].find(priceBucket) == sellOrders[order->security].end())
-			sellOrders[order->security][priceBucket] = std::make_shared<SellBucket>();
-			sellOrders[order->security][priceBucket]->bucket.push(newOrder);	
-			sellOrders[order->security][priceBucket]->total_quantity += newOrder->quantity;
+			if (sellOrders.find(priceBucket) == sellOrders.end())
+			sellOrders[priceBucket] = std::make_shared<SellBucket>();
+			sellOrders[priceBucket]->bucket.push(newOrder);	
+			sellOrders[priceBucket]->total_quantity += newOrder->quantity;
 		}
 	}
 	allOrders.insert({newOrder->id, newOrder});
@@ -63,14 +55,14 @@ void Book::cancelOrder(const string& orderId) {
 			return;
 		}
 
-		double bucketPrice = getPriceBucket(order->price, securities[order->security]->getBucketSize());
+		double bucketPrice = getPriceBucket(order->price, security->getBucketSize());
 		if (order->type == BUY) {
-			auto& bucket = buyOrders[order->security][bucketPrice];
+			auto& bucket = buyOrders[bucketPrice];
 			if (order->quantity > 0) {
 				bucket->total_quantity -= order->quantity;
 			}
 		} else {
-			auto& bucket = sellOrders[order->security][bucketPrice];
+			auto& bucket = sellOrders[bucketPrice];
 			if (order->quantity > 0) {
 				bucket->total_quantity -= order->quantity;
 			}
@@ -111,37 +103,42 @@ void Book::setMatchingStrategy(std::unique_ptr<IOrderMatchingStrategy> newMatche
 	matcher = std::move(newMatcher);
 }
 
-shared_ptr<Order> Book::orderLookup(const string& orderId) {
-	return allOrders.at(orderId);
-}	
-unordered_map<string, shared_ptr<Security>>& Book::getSecurities() {
-	return securities;
+void Book::setSecurity(std::shared_ptr<Security> security) {
+	strategy = std::move(strategy);
 }
 
-unordered_map<string, map<double, shared_ptr<BuyBucket>>>& Book::getBuyOrders() {
+shared_ptr<Order> Book::orderLookup(const string& orderId) {
+	return allOrders.at(orderId);
+}
+
+shared_ptr<Security> Book::getSecurity() {
+	return this->security;
+}
+
+map<double, shared_ptr<BuyBucket>>& Book::getBuyOrders() {
 	return buyOrders;
 }
 
-unordered_map<string, map<double, shared_ptr<SellBucket>>>& Book::getSellOrders() {
+map<double, shared_ptr<SellBucket>>& Book::getSellOrders() {
 	return sellOrders;
 }
 
 void Book::cleanUpBuckets(shared_ptr<Order> order){
 	if (order->type == BUY) {
-		auto& book = sellOrders[order->security];
+		auto& book = sellOrders;
 		for (auto it = book.begin(); it != book.end(); ) {
 			if (it->second->bucket.empty())
 				it = book.erase(it);
-			else	
+			else
 				++it;
 			}
 		}
 	else {
-		auto& book = buyOrders[order->security];
+		auto& book = buyOrders;
 		for (auto it = book.begin(); it != book.end(); ) {
 			if (it->second->bucket.empty())
 				it = book.erase(it);
-			else	
+			else
 				++it;
 		}
 	}
@@ -151,68 +148,64 @@ void Book::printBuyOrders() {
 	if (buyOrders.empty()) {
 		logger->info("# No Buy Orders");
 		return;
-	}	
+	}
 	logger->info("# Buy Orders");
 	logger->info("=============");
-	for (auto [securityString, bucketMap] : buyOrders) {
-		for (auto [price, bucketContainer] : bucketMap) {
-			logger->info("Bucket for {:.6}:", price);
-			logger->info("  total_quantity: {:.6}", bucketContainer->total_quantity);
-			auto tempBucket = bucketContainer->bucket;
-			while (!tempBucket.empty()) {
-				auto top = tempBucket.top();
-				tempBucket.pop();
-				top->print();
-			}	
-		}	
-	}	
-}	
+	for (auto [price, bucketContainer] : buyOrders) {
+		logger->info("Bucket for {:.6}:", price);
+		logger->info("  total_quantity: {:.6}", bucketContainer->total_quantity);
+		auto tempBucket = bucketContainer->bucket;
+		while (!tempBucket.empty()) {
+			auto top = tempBucket.top();
+			tempBucket.pop();
+			top->print();
+		}
+	}
+}
 
 void Book::printBuyOrdersFromAll() {
 	if (buyOrders.empty()) {
 		logger->info("# No Buy Orders");
 		return;
-	}	
+	}
 	logger->info("# Buy Orders");
 	logger->info("=============");
 	for (auto& [securityString, order] : allOrders) {
 		if (order->type == BUY && (order->fulfilled == NOT_FULFILLED || order->fulfilled == PARTIALLY_FULFILLED)) {
 			order->print();
-		}	
-	}	
-}	
+		}
+	}
+}
 
 void Book::printSellOrders() {
 	if (sellOrders.empty()) {
 		logger->info("No Sell Orders");
 		return;
-	}	
+	}
 	logger->info("# Sell Orders");
 	logger->info("=============");
-	for (auto [securityString, bucketMap] : sellOrders) {
-		for (auto [price, bucketContainer] : bucketMap) {
-			logger->info("Bucket for {:.6}:", price);
-			logger->info("  total_quantity: {:.6}", bucketContainer->total_quantity);
-			auto tempBucket = bucketContainer->bucket;
-			while (!tempBucket.empty()) {
-				auto top = tempBucket.top();
-				tempBucket.pop();
-				top->print();
-			}	
-		}	
-	}	
+	for (auto [price, bucketContainer] : sellOrders) {
+		logger->info("Bucket for {:.6}:", price);
+		logger->info("  total_quantity: {:.6}", bucketContainer->total_quantity);
+		auto tempBucket = bucketContainer->bucket;
+		while (!tempBucket.empty()) {
+			auto top = tempBucket.top();
+			tempBucket.pop();
+			top->print();
+		}
+	}
 }	
 
 void Book::printSellOrdersFromAll() {
 	if (sellOrders.empty()) {
 		logger->info("No Sell Orders");
 		return;
-	}	
+	}
 	logger->info("# Sell Orders");
 	logger->info("=============");
 	for (auto& [securityString, order] : allOrders) {
 		if (order->type == SELL && (order->fulfilled == NOT_FULFILLED || order->fulfilled == PARTIALLY_FULFILLED)) {
 			order->print();
-		}	
-	}	
-}	
+		}
+	}
+}

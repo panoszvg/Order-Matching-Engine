@@ -1,12 +1,14 @@
+#include "Book.h"
 #include "SecurityProvider.h"
+#include "strategy/PriceTimePriorityStrategy.h"
 
 #include <string>
 #include <fstream>
 #include <sstream>
 #include <stdexcept>
 
-std::vector<std::shared_ptr<Security>> SecurityProvider::loadSecurities() {
-	std::vector<std::shared_ptr<Security>> securities;
+std::unordered_map<string, std::shared_ptr<Security>> SecurityProvider::loadSecurities() {
+	std::unordered_map<string, std::shared_ptr<Security>> securities;
 
 	std::ifstream in(path);
 	if (!in)
@@ -22,7 +24,7 @@ std::vector<std::shared_ptr<Security>> SecurityProvider::loadSecurities() {
 		std::getline(ss, minQty, ',');
 		std::getline(ss, lotSize, ',');
 
-		securities.push_back(std::make_shared<Security>(symbol, stod(minQty), stod(lotSize)));
+		securities[symbol] = std::make_shared<Security>(symbol, stod(minQty), stod(lotSize));
 	}
 
 	return securities;
