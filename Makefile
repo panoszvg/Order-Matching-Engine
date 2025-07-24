@@ -2,14 +2,15 @@ CXX = g++
 CXXFLAGS = -std=c++17 -pthread
 INCLUDES = -I./
 
-LIBS = -lspdlog -lfmt
+LIBS = -lspdlog -lfmt -lws2_32 -lmswsock
 LIBS_TEST = $(LIBS) -lgmock_main -lgmock -lgtest
 
 SRC_CODE = 	Logger.cpp Order.cpp Security.cpp Book.cpp Parser.cpp \
 			SecurityProvider.cpp strategy/PriceTimePriorityStrategy.cpp \
 			messages/FixMessage/FixMessage.cpp messages/FixMessage/FixMap.cpp \
 			messages/FixMessage/FixField.cpp messages/SimpleMessage/SimpleMessage.cpp \
-			benchmark/Benchmark.cpp
+			benchmark/Benchmark.cpp \
+			tcp/Server.cpp tcp/JsonOrderHandler.cpp
 SRC_MAIN = main.cpp
 SRC_TEST = $(wildcard test/*.cpp)
 

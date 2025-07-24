@@ -6,6 +6,9 @@
 #include "SecurityProvider.h"
 #include "benchmark/Benchmark.h"
 #include "strategy/PriceTimePriorityStrategy.h"
+#include "tcp/Server.h"
+#include "tcp/JsonOrderHandler.h"
+#include <boost/asio/signal_set.hpp>
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -75,10 +78,20 @@ int main(int argc, char* argv[]) {
 		book->printBuyOrders();
 		book->printSellOrders();
 	}
-
-	// for (auto& order : book->allOrders) {
-	// 	order.second->print();
-	// }
+	
+	boost::asio::io_context io_context;
+	
+	auto handler = std::make_shared<JsonOrderHandler>(books);
+	auto server = std::make_shared<TcpServer>(io_context, 9000, handler);
+	server->startAccept();
+	
+	boost::asio::signal_set signals(io_context, SIGINT, SIGTERM);
+	signals.async_wait([&](auto, auto) {
+		std::cout << "Signal received, stopping.\n";
+		io_context.stop();
+	});
+	
+	io_context.run();
 
 	return 0;
 }
