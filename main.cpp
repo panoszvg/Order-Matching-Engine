@@ -22,11 +22,9 @@ int main() {
 	try {
 		SecurityProvider provider("input_files/securities.csv");
 		std::unordered_map<string, shared_ptr<Security>> securities = provider.loadSecurities();
+		auto strategy = std::make_shared<PriceTimePriorityStrategy>();
 		for (auto [securityStr, security] : securities) {
-			auto strategy = std::make_unique<PriceTimePriorityStrategy>();
-			auto book = std::make_shared<Book>(std::move(strategy), security);
-			book->setMatchingStrategy(std::make_unique<PriceTimePriorityStrategy>());
-			book->setSecurity(std::move(security));
+			auto book = std::make_shared<Book>(strategy, security);
 			books[securityStr] = book;
 		}
 	} catch(std::exception &e) {

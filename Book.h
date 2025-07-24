@@ -31,17 +31,17 @@ private:
     unordered_map<string, shared_ptr<Order>> allOrders;
     map<double, shared_ptr<BuyBucket>> buyOrders;
     map<double, shared_ptr<SellBucket>> sellOrders;
-	unique_ptr<IOrderMatchingStrategy> matcher;
+	shared_ptr<IOrderMatchingStrategy> matcher;
     BOOK_STRATEGY strategy;
     shared_ptr<Security> security;
 
 public:
-    explicit Book(unique_ptr<IOrderMatchingStrategy> matcher, shared_ptr<Security> security);
+    explicit Book(shared_ptr<IOrderMatchingStrategy> matcher, shared_ptr<Security> security);
 
     void insertOrder(shared_ptr<Order> order);
 	void cancelOrder(const string& orderId);
 	void modifyOrder(const string& orderId, double newQty, double newPrice);
-    void setMatchingStrategy(std::unique_ptr<IOrderMatchingStrategy> newMatcher);
+    void setMatchingStrategy(std::shared_ptr<IOrderMatchingStrategy> newMatcher);
     void setSecurity(std::shared_ptr<Security> security);
 	shared_ptr<Order> orderLookup(const string& orderId);
 

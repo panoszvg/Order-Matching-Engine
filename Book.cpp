@@ -2,12 +2,11 @@
 #include "strategy/PriceTimePriorityStrategy.h"
 #include <string>
 
-Book::Book(std::unique_ptr<IOrderMatchingStrategy> matcher, shared_ptr<Security> security) :
+Book::Book(std::shared_ptr<IOrderMatchingStrategy> matcher, shared_ptr<Security> security) :
 	matcher(std::move(matcher)), security(std::move(security)) {}
 
 void Book::insertOrder(shared_ptr<Order> order) {
-
-	double orderSecurityTick = security->getTickSize();
+double orderSecurityTick = security->getTickSize();
 	
 	if (compareDoubles(order->price, 0.0) <= 0) {
 		ostringstream oss;
@@ -99,7 +98,7 @@ void Book::modifyOrder(const string& orderId, double newQty, double newPrice) {
 	}
 }
 
-void Book::setMatchingStrategy(std::unique_ptr<IOrderMatchingStrategy> newMatcher) {
+void Book::setMatchingStrategy(std::shared_ptr<IOrderMatchingStrategy> newMatcher) {
 	matcher = std::move(newMatcher);
 }
 
