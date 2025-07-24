@@ -30,9 +30,16 @@ string generateUUID() {
 	return ss.str();
 }
 
+int64_t Order::getMicroTimestamp() const {
+    return std::chrono::duration_cast<std::chrono::microseconds>(
+        timestamp.time_since_epoch()).count();
+}
+
+
 void Order::print() const {
-    logger->info("  Price: {:.6}, Quantity: {:.6}, Fulfilled: {}", price, quantity,
-                 (fulfilled == NOT_FULFILLED ? "no" :
-                  fulfilled == PARTIALLY_FULFILLED ? "partially" :
-                  fulfilled == FULLY_FULFILLED ? "yes" : "cancelled"));
+	auto ff = (	fulfilled == NOT_FULFILLED ? "no" :
+                fulfilled == PARTIALLY_FULFILLED ? "partially" :
+                fulfilled == FULLY_FULFILLED ? "yes" : "cancelled");
+	auto ts = getMicroTimestamp();
+    logger->info("  Price: {:.6}, Quantity: {:.6}, Fulfilled: {}, Timestamp: {}", price, quantity, ff, ts);
 }

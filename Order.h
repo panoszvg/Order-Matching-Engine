@@ -1,13 +1,15 @@
 #ifndef ORDER_H
 #define ORDER_H
 
-#include <string>
 #include <queue>
+#include <chrono>
 #include <memory>
+#include <string>
+#include <cstdint>
 
+using std::queue;
 using std::string;
 using std::shared_ptr;
-using std::queue;
 
 enum OrderType {
     BUY,
@@ -31,7 +33,9 @@ public:
     double quantity;
     double price;
     Fulfilled fulfilled;
+    std::chrono::system_clock::time_point timestamp;
 
+    int64_t getMicroTimestamp() const;
     void print() const;
 };
 

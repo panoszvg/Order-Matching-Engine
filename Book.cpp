@@ -6,7 +6,7 @@ Book::Book(std::shared_ptr<IOrderMatchingStrategy> matcher, shared_ptr<Security>
 	matcher(std::move(matcher)), security(std::move(security)) {}
 
 void Book::insertOrder(shared_ptr<Order> order) {
-double orderSecurityTick = security->getTickSize();
+	double orderSecurityTick = security->getTickSize();
 	
 	if (compareDoubles(order->price, 0.0) <= 0) {
 		ostringstream oss;
@@ -26,6 +26,9 @@ double orderSecurityTick = security->getTickSize();
 		throw invalid_argument(oss.str());
 	}
 	
+	order->timestamp = std::chrono::system_clock::now();
+	logger->info("Insert order {} @ {} μs | Price: {} | Qty: {}",
+				  order->id, order->getMicroTimestamp(), order->price, order->quantity);
 	matcher->matchOrder(order, *this);
 	auto newOrder = order;
 	if (order->fulfilled != FULLY_FULFILLED && order->fulfilled != CANCELLED) {

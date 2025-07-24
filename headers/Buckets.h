@@ -15,12 +15,16 @@ using std::priority_queue;
 class CompareBuy {
 	public:
 	bool operator() (shared_ptr<Order> o1, shared_ptr<Order> o2) {
+		if (o1->price == o2->price)
+			return o1->timestamp > o2->timestamp;
 		return o1->price < o2->price;
 	}
 };
 class CompareSell {
 	public:
 	bool operator() (shared_ptr<Order> o1, shared_ptr<Order> o2) {
+		if (o1->price == o2->price)
+			return o1->timestamp > o2->timestamp;
 		return o1->price > o2->price;
 	}
 };
