@@ -4,6 +4,7 @@
 #include "Parser.h"
 #include "Security.h"
 #include "SecurityProvider.h"
+#include "benchmark/Benchmark.h"
 #include "strategy/PriceTimePriorityStrategy.h"
 #include <iostream>
 #include <fstream>
@@ -11,7 +12,7 @@
 #include <string>
 #include <vector>
 
-int main() {
+int main(int argc, char* argv[]) {
 
 	logger->info("");
 	logger->info("PROGRAM START");
@@ -30,6 +31,23 @@ int main() {
 	} catch(std::exception &e) {
 		logger->error("Securities couldn't be read: {}", e.what());
 	}
+
+    if (argc > 1) {
+        std::string mode = argv[1];
+        if (mode == "benchmark") {
+			if (books.empty()) {
+				std::cerr << "No books available to benchmark.\n";
+				return 1;
+			}
+			if (mode == "benchmark" && argc > 2) {
+				std::string type = argv[2];
+				auto book = books.begin()->second;
+				if (type == "insertcancel") return runInsertCancelBenchmark(book);
+				else if (type == "match") return runMatchSimulationBenchmark(book);
+				else if (type == "mixed") return runMixedLoadBenchmark(book);
+			}
+        }
+    }
 
 	string line = "";
 	vector<string> lines;
