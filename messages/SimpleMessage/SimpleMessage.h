@@ -6,7 +6,7 @@
 
 class SimpleMessage : public IMessage {
 private:
-    std::unordered_map<int, string> fields;
+	std::unordered_map<int, string> fields;
 
 public:
 	void populate(const string& message) override;

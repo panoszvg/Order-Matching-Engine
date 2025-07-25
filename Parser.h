@@ -19,11 +19,11 @@ enum PARSER_MODE { SIMPLE_MESSAGE, FIX_MESSAGE };
 
 class Parser {
 private:
-    PARSER_MODE parserMode;
+	PARSER_MODE parserMode;
 
 public:
-    Parser(PARSER_MODE parserMode = SIMPLE_MESSAGE);
-    shared_ptr<IMessage> parse(const string& message);
+	Parser(PARSER_MODE parserMode = SIMPLE_MESSAGE);
+	shared_ptr<IMessage> parse(const string& message);
 
 };
 

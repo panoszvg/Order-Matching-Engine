@@ -3,9 +3,12 @@ import json
 import time
 import random
 import uuid
+import threading
 
 HOST = '127.0.0.1'
-PORT = 9000
+PORTS = [9000, 9001, 9002]
+ORDERS_PER_CLIENT = 10
+DELAY_BETWEEN_ORDERS = 0.1
 
 def generate_order():
     security = random.choice(["ADA", "ETH", "BTC"])
@@ -26,14 +29,27 @@ def generate_order():
         "quantity": random.randint(1, 10)
     }
 
+def send_orders_to_port(port):
+    try:
+        with socket.create_connection((HOST, port)) as sock:
+            for _ in range(ORDERS_PER_CLIENT):
+                order = generate_order()
+                message = json.dumps(order) + '\n'
+                sock.sendall(message.encode('utf-8'))
+                print(f"[Port {port}] Sent:", message.strip())
+                time.sleep(DELAY_BETWEEN_ORDERS)
+    except Exception as e:
+        print(f"[Port {port}] Connection failed: {e}")
+
 def main():
-    with socket.create_connection((HOST, PORT)) as sock:
-        for _ in range(10):
-            order = generate_order()
-            message = json.dumps(order) + '\n'
-            sock.sendall(message.encode('utf-8'))
-            print("Sent:", message.strip())
-            time.sleep(0.1)
+    threads = []
+    for port in PORTS:
+        t = threading.Thread(target=send_orders_to_port, args=(port,))
+        t.start()
+        threads.append(t)
+
+    for t in threads:
+        t.join()
 
 if __name__ == '__main__':
     main()

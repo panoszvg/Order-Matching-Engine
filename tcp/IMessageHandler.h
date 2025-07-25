@@ -6,8 +6,8 @@
 
 class IMessageHandler {
 public:
-    virtual ~IMessageHandler() = default;
-    virtual void handle(const std::string& rawMessage) = 0;
+	virtual ~IMessageHandler() = default;
+	virtual void handle(const std::string& rawMessage) = 0;
 };
 
 #endif // IMESSAGEHANDLER_H

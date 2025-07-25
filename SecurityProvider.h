@@ -7,7 +7,7 @@ using std::string;
 
 class SecurityProvider : public ISecurityProvider {
 private:
-    string path;
+	string path;
 
 public:
 	explicit SecurityProvider(string path) : path(std::move(path)) {}

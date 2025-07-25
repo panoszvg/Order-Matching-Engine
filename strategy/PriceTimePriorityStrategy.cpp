@@ -41,7 +41,7 @@ void PriceTimePriorityStrategy::matchSellOrder(std::shared_ptr<Order> newOrder, 
 }
 
 void PriceTimePriorityStrategy::matchBuyAgainstBucket(std::shared_ptr<Order>& buyOrder, std::shared_ptr<SellBucket>& bucket) {
-    	while (!bucket->bucket.empty()
+		while (!bucket->bucket.empty()
 		&& buyOrder->fulfilled != FULLY_FULFILLED
 		&& buyOrder->fulfilled != CANCELLED)
 	{

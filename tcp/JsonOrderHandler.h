@@ -13,12 +13,12 @@ using json = nlohmann::json;
 
 class JsonOrderHandler : public IMessageHandler {
 private:
-    std::unordered_map<std::string, std::shared_ptr<Book>>& books_;
-    
+	std::unordered_map<std::string, std::shared_ptr<Book>>& books_;
+	
 public:
-    JsonOrderHandler(std::unordered_map<std::string, std::shared_ptr<Book>>& books);
+	JsonOrderHandler(std::unordered_map<std::string, std::shared_ptr<Book>>& books);
 
-    void handle(const std::string& rawMessage) override;
+	void handle(const std::string& rawMessage) override;
 };
 
 

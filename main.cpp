@@ -6,7 +6,7 @@
 #include "SecurityProvider.h"
 #include "benchmark/Benchmark.h"
 #include "strategy/PriceTimePriorityStrategy.h"
-#include "tcp/Server.h"
+#include "tcp/TcpServer.h"
 #include "tcp/JsonOrderHandler.h"
 #include <boost/asio/signal_set.hpp>
 #include <iostream>
@@ -35,9 +35,9 @@ int main(int argc, char* argv[]) {
 		logger->error("Securities couldn't be read: {}", e.what());
 	}
 
-    if (argc > 1) {
-        std::string mode = argv[1];
-        if (mode == "benchmark") {
+	if (argc > 1) {
+		std::string mode = argv[1];
+		if (mode == "benchmark") {
 			if (books.empty()) {
 				std::cerr << "No books available to benchmark.\n";
 				return 1;
@@ -49,8 +49,8 @@ int main(int argc, char* argv[]) {
 				else if (type == "match") return runMatchSimulationBenchmark(book);
 				else if (type == "mixed") return runMixedLoadBenchmark(book);
 			}
-        }
-    }
+		}
+	}
 
 	string line = "";
 	vector<string> lines;
@@ -82,15 +82,16 @@ int main(int argc, char* argv[]) {
 	boost::asio::io_context io_context;
 	
 	auto handler = std::make_shared<JsonOrderHandler>(books);
-	auto server = std::make_shared<TcpServer>(io_context, 9000, handler);
-	server->startAccept();
-	
+	std::vector<int> ports = {9000, 9001, 9002};
+	TcpServer server(io_context, ports, handler);
+	server.run();
+
 	boost::asio::signal_set signals(io_context, SIGINT, SIGTERM);
 	signals.async_wait([&](auto, auto) {
 		std::cout << "Signal received, stopping.\n";
 		io_context.stop();
 	});
-	
+
 	io_context.run();
 
 	return 0;
