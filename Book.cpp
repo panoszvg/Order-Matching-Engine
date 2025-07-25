@@ -5,7 +5,7 @@
 Book::Book(std::shared_ptr<IOrderMatchingStrategy> matcher, shared_ptr<Security> security) :
 	matcher(std::move(matcher)), security(std::move(security)) {}
 
-void Book::insertOrder(shared_ptr<Order> order) {
+void Book::insertOrderUnlocked(shared_ptr<Order> order) {
 	double orderSecurityTick = security->getTickSize();
 	
 	if (compareDoubles(order->price, 0.0) <= 0) {
@@ -25,7 +25,7 @@ void Book::insertOrder(shared_ptr<Order> order) {
 		oss << "Order price (" << order->price << ") does not align with tick size (" << orderSecurityTick << ")";
 		throw invalid_argument(oss.str());
 	}
-	
+
 	order->timestamp = std::chrono::system_clock::now();
 	logger->info("Insert order {} @ {} μs | Price: {} | Qty: {}",
 				  order->id, order->getMicroTimestamp(), order->price, order->quantity);
@@ -49,9 +49,9 @@ void Book::insertOrder(shared_ptr<Order> order) {
 	allOrders.insert({newOrder->id, newOrder});
 }
 
-void Book::cancelOrder(const string& orderId) {
+void Book::cancelOrderUnlocked(const string& orderId) {
 	try {
-		auto order = orderLookup(orderId);
+		auto order = orderLookupUnlocked(orderId);
 
 		if (order->fulfilled == CANCELLED || order->fulfilled == FULLY_FULFILLED) {
 			return;
@@ -76,9 +76,14 @@ void Book::cancelOrder(const string& orderId) {
 	}
 }
 
+shared_ptr<Order> Book::orderLookupUnlocked(const std::string& orderId) {
+    return allOrders.at(orderId);
+}
+
 void Book::modifyOrder(const string& orderId, double newQty, double newPrice) {
+	std::lock_guard<std::mutex> lock(bookMutex);
 	try {
-		auto order = orderLookup(orderId);
+		auto order = orderLookupUnlocked(orderId);
 		
 		// Check new quantity against the existing quantity
 		if (newQty < order->quantity) {
@@ -87,11 +92,11 @@ void Book::modifyOrder(const string& orderId, double newQty, double newPrice) {
 			throw invalid_argument(oss.str());
 		}
 		
-		cancelOrder(orderId);
+		cancelOrderUnlocked(orderId);
 		shared_ptr<Order> modifiedOrder = std::make_shared<Order>(order->security, order->type, newQty, newPrice);
 		
 		try {
-			insertOrder(modifiedOrder);
+			insertOrderUnlocked(modifiedOrder);
 		} catch (const invalid_argument& arg) {
 			logger->error("Order rejected: {}", arg.what());
 		}
@@ -99,6 +104,16 @@ void Book::modifyOrder(const string& orderId, double newQty, double newPrice) {
 	} catch (const std::out_of_range &e) {
 		logger->error("Order {} doesn't exist", orderId);
 	}
+}
+
+void Book::insertOrder(shared_ptr<Order> order) {
+	std::lock_guard<std::mutex> lock(bookMutex);
+	insertOrderUnlocked(order);
+}
+
+void Book::cancelOrder(const string& orderId) {
+	std::lock_guard<std::mutex> lock(bookMutex);
+	cancelOrderUnlocked(orderId);
 }
 
 void Book::setMatchingStrategy(std::shared_ptr<IOrderMatchingStrategy> newMatcher) {
@@ -109,8 +124,9 @@ void Book::setSecurity(std::shared_ptr<Security> security) {
 	strategy = std::move(strategy);
 }
 
-shared_ptr<Order> Book::orderLookup(const string& orderId) {
-	return allOrders.at(orderId);
+shared_ptr<Order> Book::orderLookup(const std::string& orderId) {
+    std::lock_guard<std::mutex> lock(bookMutex);
+    return orderLookupUnlocked(orderId);
 }
 
 shared_ptr<Security> Book::getSecurity() {
