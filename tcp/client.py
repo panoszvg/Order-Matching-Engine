@@ -6,7 +6,8 @@ import uuid
 import threading
 
 HOST = '127.0.0.1'
-PORTS = [9000, 9001, 9002]
+JSON_PORTS = [9000, 9001]
+FIX_PORTS = [9002, 9003]
 ORDERS_PER_CLIENT = 10
 DELAY_BETWEEN_ORDERS = 0.1
 
@@ -29,12 +30,27 @@ def generate_order():
         "quantity": random.randint(1, 10)
     }
 
-def send_orders_to_port(port):
+def to_fix(order):
+    # Very basic FIX string format
+    type = '1' if order["type"] == "BUY" else '2'
+    fields = [
+        f"8=FIX.4.2",
+        f"35=D",
+        f"55={order['security']}",
+        f"54={type}",
+        f"44={order['price']}",
+        f"38={order['quantity']}",
+        f"11={order['id']}",
+        "10=000"
+    ]
+    return ''.join(fields) + '\n'
+
+def send_orders(port, use_fix):
     try:
         with socket.create_connection((HOST, port)) as sock:
             for _ in range(ORDERS_PER_CLIENT):
                 order = generate_order()
-                message = json.dumps(order) + '\n'
+                message = to_fix(order) if use_fix else json.dumps(order) + '\n'
                 sock.sendall(message.encode('utf-8'))
                 print(f"[Port {port}] Sent:", message.strip())
                 time.sleep(DELAY_BETWEEN_ORDERS)
@@ -43,11 +59,13 @@ def send_orders_to_port(port):
 
 def main():
     threads = []
-    for port in PORTS:
-        t = threading.Thread(target=send_orders_to_port, args=(port,))
-        t.start()
-        threads.append(t)
+    for port in JSON_PORTS:
+        threads.append(threading.Thread(target=send_orders, args=(port, False)))
+    for port in FIX_PORTS:
+        threads.append(threading.Thread(target=send_orders, args=(port, True)))
 
+    for t in threads:
+        t.start()
     for t in threads:
         t.join()
 

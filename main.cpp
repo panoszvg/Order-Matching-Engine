@@ -7,6 +7,7 @@
 #include "benchmark/Benchmark.h"
 #include "strategy/PriceTimePriorityStrategy.h"
 #include "tcp/TcpServer.h"
+#include "tcp/FixOrderHandler.h"
 #include "tcp/JsonOrderHandler.h"
 #include <boost/asio/signal_set.hpp>
 #include <iostream>
@@ -81,10 +82,14 @@ int main(int argc, char* argv[]) {
 	
 	boost::asio::io_context io_context;
 	
-	auto handler = std::make_shared<JsonOrderHandler>(books);
-	std::vector<int> ports = {9000, 9001, 9002};
-	TcpServer server(io_context, ports, handler);
-	server.run();
+	auto jsonHandler = std::make_shared<JsonOrderHandler>(books);
+	auto fixHandler  = std::make_shared<FixOrderHandler>(books);
+
+	TcpServer jsonServer(io_context, {9000, 9001}, jsonHandler);
+	TcpServer fixServer(io_context,  {9002, 9003}, fixHandler);
+
+	jsonServer.run();
+	fixServer.run();
 
 	boost::asio::signal_set signals(io_context, SIGINT, SIGTERM);
 	signals.async_wait([&](auto, auto) {

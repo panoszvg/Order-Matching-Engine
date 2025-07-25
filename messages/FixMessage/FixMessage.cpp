@@ -16,17 +16,20 @@ void FixMessage::populate(const string& message) {
 	while (std::getline(ss, token, SOH)) {
 		auto equalPos = token.find('=');
 		if (equalPos != string::npos) {
-			int tag = stoi(token.substr(0, equalPos));
+			string tagStr = token.substr(0, equalPos);
 			string value = token.substr(equalPos + 1);
 
-			if (tag == 10) {
-				currentMap = trailer;
-			}
+			try {				
+				int tag = std::stoi(tagStr);
 
-			currentMap->addField(tag, value);
+				if (tag == 10) currentMap = trailer;
+				currentMap->addField(tag, value);
+				if (tag == 35) currentMap = body;
 
-			if (tag == 52) {
-				currentMap = body;
+			} catch (const std::invalid_argument& e) {
+				logger->error("Invalid tag in FIX field: '{}'. Skipping.", tagStr);
+			} catch (const std::out_of_range& e) {
+				logger->error("Out of range tag in FIX field: '{}'. Skipping.", tagStr);
 			}
 		}
 	}
@@ -36,13 +39,18 @@ void FixMessage::populate(const string& message) {
 void FixMessage::isValid() {}
 
 shared_ptr<Order> FixMessage::makeOrder() {
-	string  tag_55 = this->getValue(55);
-    int     tag_54 = stoi(this->getValue(54));
-    double  tag_38 = stod(this->getValue(38));
-    double  tag_44 = stod(this->getValue(44));
+	try {
+		string  tag_55 = this->getValue(55);
+		int     tag_54 = stoi(this->getValue(54));
+		double  tag_38 = stod(this->getValue(38));
+		double  tag_44 = stod(this->getValue(44));
 
-    shared_ptr<Order> newOrder = make_shared<Order>(tag_55, (tag_54 == 1) ? BUY : SELL, tag_38, tag_44);
-    return newOrder;
+		shared_ptr<Order> newOrder = make_shared<Order>(tag_55, (tag_54 == 1) ? BUY : SELL, tag_38, tag_44);
+		return newOrder;
+	} catch (const std::exception& e) {
+		logger->error("FIX makeOrder failed: {}", e.what());
+		throw;
+	}
 }
 
 string FixMessage::getValue(int tag) {
