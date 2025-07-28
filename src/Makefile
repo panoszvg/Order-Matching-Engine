@@ -2,8 +2,17 @@ CXX = g++
 CXXFLAGS = -std=c++17 -pthread
 INCLUDES = -I./
 
-LIBS = -lspdlog -lfmt -lws2_32 -lmswsock
-LIBS_TEST = $(LIBS) -lgmock_main -lgmock -lgtest
+UNAME_S := $(shell uname -s)
+
+ifeq ($(UNAME_S),Linux)
+    LIBS = -lspdlog -lfmt -lboost_system
+    LIBS_TEST = $(LIBS) -lgmock_main -lgmock -lgtest
+endif
+
+ifeq ($(findstring MINGW,$(UNAME_S)),MINGW)
+    LIBS = -lspdlog -lfmt -lws2_32 -lmswsock
+    LIBS_TEST = $(LIBS) -lgmock_main -lgmock -lgtest
+endif
 
 SRC_CODE = 	Logger.cpp Order.cpp Security.cpp Book.cpp Parser.cpp \
 			SecurityProvider.cpp strategy/PriceTimePriorityStrategy.cpp \

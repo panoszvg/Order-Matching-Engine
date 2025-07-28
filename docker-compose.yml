@@ -1,0 +1,10 @@
+services:
+  engine:
+    build: .
+    container_name: order-matching-engine
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+      - "9002:9002"
+      - "9003:9003"
+    restart: unless-stopped
