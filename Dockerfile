@@ -8,8 +8,8 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
-COPY src/ ./src/
-WORKDIR /app/src
+COPY src/order_matching_engine/ ./src/order_matching_engine/
+WORKDIR /app/src/order_matching_engine
 RUN make
 
 # Stage 2: Runtime
@@ -21,8 +21,8 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
-COPY --from=build /app/src/order_matching_engine .
-COPY --from=build /app/src/input_files ./input_files
+COPY --from=build /app/src/order_matching_engine/order_matching_engine .
+COPY --from=build /app/src/order_matching_engine/input_files ./input_files
 
 EXPOSE 9000
 EXPOSE 9001

@@ -2,8 +2,9 @@
 #define IMESSAGEHANDLER_H
 
 #pragma once
-#include "TcpSession.h"
 #include <string>
+
+class TcpSession;
 
 class IMessageHandler {
 public:

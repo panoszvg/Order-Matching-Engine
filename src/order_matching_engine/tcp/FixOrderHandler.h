@@ -4,6 +4,7 @@
 #include "../Book.h"
 #include "../Logger.h"
 #include "IMessageHandler.h"
+#include "TcpSession.h"
 #include "../messages/FixMessage/FixMessage.h"
 #include <memory>
 #include <unordered_map>
