@@ -21,10 +21,12 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
-COPY --from=build /app/src .
+COPY --from=build /app/src/order_matching_engine .
+COPY --from=build /app/src/input_files ./input_files
 
 EXPOSE 9000
 EXPOSE 9001
 EXPOSE 9002
 EXPOSE 9003
+EXPOSE 9100
 CMD ["./order_matching_engine"]

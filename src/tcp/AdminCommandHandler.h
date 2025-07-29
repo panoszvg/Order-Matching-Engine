@@ -1,5 +1,5 @@
-#ifndef JSONMESSAGEHANDLER_H
-#define JSONMESSAGEHANDLER_H
+#ifndef ADMINCOMMANDHANDLER_H
+#define ADMINCOMMANDHANDLER_H
 
 #include "IMessageHandler.h"
 #include "../Book.h"
@@ -11,15 +11,15 @@
 
 using json = nlohmann::json;
 
-class JsonOrderHandler : public IMessageHandler {
+class AdminCommandHandler : public IMessageHandler {
 private:
 	std::unordered_map<std::string, std::shared_ptr<Book>>& books_;
 	
 public:
-	JsonOrderHandler(std::unordered_map<std::string, std::shared_ptr<Book>>& books);
+	AdminCommandHandler(std::unordered_map<std::string, std::shared_ptr<Book>>& books);
 
 	void handle(const std::string& rawMessage, TcpSession& session) override;
 };
 
 
-#endif // JSONMESSAGEHANDLER_H
+#endif // ADMINCOMMANDHANDLER_H

@@ -13,7 +13,10 @@
 #include <memory>
 #include <vector>
 #include <sstream>
+#include <fstream>
+#include <filesystem>
 #include <unordered_map>
+#include <nlohmann/json.hpp>
 
 using std::map;
 using std::deque;
@@ -59,6 +62,8 @@ public:
 	void printBuyOrdersFromAll() override;
 	void printSellOrders() override;
 	void printSellOrdersFromAll() override;
+
+	void exportSnapshot() const;
 
 };
 

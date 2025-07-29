@@ -3,7 +3,7 @@
 JsonOrderHandler::JsonOrderHandler(std::unordered_map<std::string, std::shared_ptr<Book>>& books)
 	: books_(books) {}
 
-void JsonOrderHandler::handle(const std::string& rawMessage) {
+void JsonOrderHandler::handle(const std::string& rawMessage, TcpSession& session) {
 	try {
 		auto j = json::parse(rawMessage);
 
@@ -19,14 +19,18 @@ void JsonOrderHandler::handle(const std::string& rawMessage) {
 		if (books_.count(security)) {
 			try {
 				books_.at(security)->insertOrder(order);
+				session.send(R"({"status":"ok","message":"Order accepted"})");
 			} catch (const std::invalid_argument& arg) {
 				logger->error("Order rejected: {}", arg.what());
+				session.send(std::string(R"({"status":"error","message":")") + arg.what() + R"("})");
 			}
 		} else {
 			logger->error("Unknown security: {}", security);
+			session.send(R"({"status":"error","message":"Unknown security"})");
 		}
 
 	} catch (const std::exception& e) {
 		logger->error("Failed to parse or handle message: {}", e.what());
+		session.send(std::string(R"({"status":"error","message":")") + e.what() + R"("})");
 	}
 }

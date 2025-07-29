@@ -227,3 +227,46 @@ void Book::printSellOrdersFromAll() {
 		}
 	}
 }
+
+void Book::exportSnapshot() const {
+	using json = nlohmann::json;
+
+	json j;
+	j["symbol"] = security->getSymbol();
+
+	j["bids"] = json::array();
+	for (auto it = buyOrders.rbegin(); it != buyOrders.rend(); ++it) {
+		double price = it->first;
+		const auto& bucket = it->second;
+		if (!bucket || bucket->total_quantity <= 0)
+			continue;
+
+		j["bids"].push_back({
+			{"price", round(price)},
+			{"quantity", round(bucket->total_quantity)}
+		});
+	}
+
+	j["asks"] = json::array();
+	for (const auto& [price, bucket] : sellOrders) {
+		if (!bucket || bucket->total_quantity <= 0)
+			continue;
+
+		j["asks"].push_back({
+			{"price", round(price)},
+			{"quantity", round(bucket->total_quantity)}
+		});
+	}
+
+	std::filesystem::create_directory("snapshots");
+	std::string filename = "snapshots/book_" + security->getSymbol() + ".json";
+	std::ofstream out(filename);
+	if (!out.is_open()) {
+		spdlog::error("Failed to write snapshot for {} to {}", security->getSymbol(), filename);
+		return;
+	}
+
+	out << j.dump(2);
+	logger->info("Exported snapshot to {}", filename);
+}
+

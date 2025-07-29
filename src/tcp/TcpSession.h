@@ -20,7 +20,7 @@ public:
 		: socket_(std::move(socket)), handler_(std::move(handler)) {}
 
 	void start();
-
+	void send(const std::string& message);
 };
 
 #endif // TCPSESSION_H

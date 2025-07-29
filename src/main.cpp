@@ -9,6 +9,7 @@
 #include "tcp/TcpServer.h"
 #include "tcp/FixOrderHandler.h"
 #include "tcp/JsonOrderHandler.h"
+#include "tcp/AdminCommandHandler.h"
 #include <boost/asio/signal_set.hpp>
 #include <iostream>
 #include <fstream>
@@ -84,12 +85,15 @@ int main(int argc, char* argv[]) {
 	
 	auto jsonHandler = std::make_shared<JsonOrderHandler>(books);
 	auto fixHandler  = std::make_shared<FixOrderHandler>(books);
+	auto adminCommandHandler = std::make_shared<AdminCommandHandler>(books);
 
 	TcpServer jsonServer(io_context, {9000, 9001}, jsonHandler);
 	TcpServer fixServer(io_context,  {9002, 9003}, fixHandler);
+	TcpServer adminServer(io_context, {9100}, adminCommandHandler);
 
 	jsonServer.run();
 	fixServer.run();
+	adminServer.run();
 
 	boost::asio::signal_set signals(io_context, SIGINT, SIGTERM);
 	signals.async_wait([&](auto, auto) {

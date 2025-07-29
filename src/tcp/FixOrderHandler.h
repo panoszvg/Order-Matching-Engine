@@ -15,7 +15,7 @@ private:
 public:
     explicit FixOrderHandler(std::unordered_map<std::string, std::shared_ptr<Book>>& books);
 
-    void handle(const std::string& rawMessage) override;
+    void handle(const std::string& rawMessage, TcpSession& session) override;
 };
 
 #endif // FIXORDERHANDLER_H

@@ -14,12 +14,12 @@ ifeq ($(findstring MINGW,$(UNAME_S)),MINGW)
     LIBS_TEST = $(LIBS) -lgmock_main -lgmock -lgtest
 endif
 
-SRC_CODE = 	Logger.cpp Order.cpp Security.cpp Book.cpp Parser.cpp \
-			SecurityProvider.cpp strategy/PriceTimePriorityStrategy.cpp \
-			messages/FixMessage/FixMessage.cpp messages/FixMessage/FixMap.cpp \
-			messages/FixMessage/FixField.cpp messages/SimpleMessage/SimpleMessage.cpp \
-			benchmark/Benchmark.cpp \
-			tcp/TcpServer.cpp tcp/JsonOrderHandler.cpp tcp/TcpSession.cpp tcp/FixOrderHandler.cpp
+SRC_CODE = 	$(wildcard *.cpp) \
+			$(wildcard tcp/*.cpp) \
+			$(wildcard strategy/*.cpp) \
+			$(wildcard messages/FixMessage/*.cpp) \
+			$(wildcard messages/SimpleMessage/*.cpp) \
+			$(wildcard benchmark/*.cpp)
 SRC_MAIN = main.cpp
 SRC_TEST = $(wildcard test/*.cpp)
 
