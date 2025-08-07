@@ -1,11 +1,32 @@
 services:
   engine:
-    build: .
-    container_name: order-matching-engine
+    build:
+      context: ./src/order_matching_engine
+      dockerfile: Dockerfile
     ports:
       - "9000:9000"
       - "9001:9001"
       - "9002:9002"
       - "9003:9003"
       - "9100:9100"
-    restart: unless-stopped
+    volumes:
+      - ./src/order_matching_engine/input_files:/app/input_files
+      - ./snapshots:/app/snapshots
+    networks:
+      - omnet
+
+  flask:
+    build:
+      context: ./src/flask_api
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./snapshots:/app/snapshots
+    networks:
+      - omnet
+    depends_on:
+      - engine
+
+networks:
+  omnet:

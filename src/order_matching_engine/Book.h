@@ -28,6 +28,8 @@ using std::unordered_map;
 using std::priority_queue;
 using std::invalid_argument;
 
+using json = nlohmann::json;
+
 enum BOOK_STRATEGY { PRICE_TIME_PRIORITY };
 
 class Book : public IOrderBook {
@@ -64,6 +66,7 @@ public:
 	void printSellOrdersFromAll() override;
 
 	void exportSnapshot() const;
+	json toJson() const;
 
 };
 

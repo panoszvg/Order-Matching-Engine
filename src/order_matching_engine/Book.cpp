@@ -229,8 +229,22 @@ void Book::printSellOrdersFromAll() {
 }
 
 void Book::exportSnapshot() const {
-	using json = nlohmann::json;
+	auto jsonBook = toJson();
 
+	std::filesystem::create_directory("snapshots");
+	std::string timestamp = std::to_string(std::chrono::system_clock::now().time_since_epoch().count());
+	std::string filename = "snapshots/book_" + security->getSymbol() + "_" + timestamp + ".json";
+	std::ofstream out(filename);
+	if (!out.is_open()) {
+		spdlog::error("Failed to write snapshot for {} to {}", security->getSymbol(), filename);
+		return;
+	}
+
+	out << jsonBook.dump(2);
+	logger->info("Exported snapshot to {}", filename);
+}
+
+json Book::toJson() const {
 	json j;
 	j["symbol"] = security->getSymbol();
 
@@ -258,15 +272,5 @@ void Book::exportSnapshot() const {
 		});
 	}
 
-	std::filesystem::create_directory("snapshots");
-	std::string filename = "snapshots/book_" + security->getSymbol() + ".json";
-	std::ofstream out(filename);
-	if (!out.is_open()) {
-		spdlog::error("Failed to write snapshot for {} to {}", security->getSymbol(), filename);
-		return;
-	}
-
-	out << j.dump(2);
-	logger->info("Exported snapshot to {}", filename);
+	return j;
 }
-

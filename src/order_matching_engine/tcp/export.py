@@ -18,8 +18,11 @@ def send_admin_command(command: dict):
         print(f"[AdminPort {ADMIN_PORT}] Connection failed: {e}")
         return {"error": str(e)}
 
+def get_snapshot(symbol: str):
+    return send_admin_command({"type": "GET_SNAPSHOT", "symbol": symbol})
+
 def export_snapshot(symbol: str):
-    return send_admin_command({"type": "EXPORT", "symbol": symbol})
+    return send_admin_command({"type": "EXPORT_SNAPSHOT", "symbol": symbol})
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
@@ -28,3 +31,4 @@ if __name__ == "__main__":
 
     symbol = sys.argv[1]
     export_snapshot(symbol)
+    get_snapshot(symbol)

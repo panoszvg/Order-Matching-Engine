@@ -5,10 +5,34 @@ AdminCommandHandler::AdminCommandHandler(std::unordered_map<std::string, std::sh
 
 void AdminCommandHandler::handle(const std::string& rawMessage, TcpSession& session) {
 	try {
-        auto json = nlohmann::json::parse(rawMessage);
-        std::string type = json["type"];
+		auto json = nlohmann::json::parse(rawMessage);
+		std::string type = json["type"];
 
-        if (type == "EXPORT") {
+		if (type == "GET_SNAPSHOT") {
+			try {
+				std::string symbol = json["symbol"];
+				auto book = books_[symbol];
+				if (book) {
+					nlohmann::json bookJson = book->toJson();
+
+					nlohmann::json response = {
+						{"status", "ok"},
+						{"message", "Exported snapshot for " + symbol},
+						{"symbol", symbol},
+						{"book", bookJson}
+					};
+
+					session.send(response.dump());
+					logger->info("Book was exported and returned");
+				} else {
+					session.send(R"({"status":"error","message":"Unknown symbol"})");
+				}
+			} catch (const std::exception& e) {
+				session.send(std::string(R"({"status":"error","message":"Exception: )") + e.what() + R"("})");
+				logger->error("Failed export book: {}", e.what());
+			}
+		}
+		else if (type == "EXPORT_SNAPSHOT") {
 			try {
 				std::string symbol = json["symbol"];
 				auto book = books_[symbol];
