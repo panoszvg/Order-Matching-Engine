@@ -11,20 +11,20 @@ std::shared_ptr<Order> createTestOrder(double price, double quantity, const std:
 	return std::make_shared<Order>(security, type, price, quantity);
 }
 
-int runInsertCancelBenchmark(std::shared_ptr<Book> book) {
+int runInsertCancelBenchmark(Book& book) {
 	std::cout << "[Insert + Cancel Benchmark]\n";
 
 	std::vector<std::shared_ptr<Order>> insertedOrders;
 	auto start = Clock::now();
 
 	for (int i = 0; i < 1000000; ++i) {
-		auto order = createTestOrder(100.0 + (i % 10), 1.0, book->getSecurity()->getSymbol(), "BUY");
+		auto order = createTestOrder(100.0 + (i % 10), 1.0, book.getSecurity().getSymbol(), "BUY");
 		insertedOrders.push_back(order);
-		book->insertOrder(order);
+		book.insertOrder(order);
 	}
 
 	for (int i = 0; i < 100000; ++i) {
-		book->cancelOrder(insertedOrders[i]->id);
+		book.cancelOrder(insertedOrders[i]->id);
 	}
 
 	auto end = Clock::now();
@@ -38,17 +38,17 @@ int runInsertCancelBenchmark(std::shared_ptr<Book> book) {
 	return 0;
 }
 
-int runMatchSimulationBenchmark(std::shared_ptr<Book> book) {
+int runMatchSimulationBenchmark(Book& book) {
 	std::cout << "[Match Simulation Benchmark]\n";
 
 	auto start = Clock::now();
 
 	int orderCount = 0;
 	for (int i = 0; i < 500000; ++i) {
-		auto buy = createTestOrder(101.0, 1.0, book->getSecurity()->getSymbol(), "BUY");
-		auto sell = createTestOrder(100.0, 1.0, book->getSecurity()->getSymbol(), "SELL");
-		book->insertOrder(buy);
-		book->insertOrder(sell);
+		auto buy = createTestOrder(101.0, 1.0, book.getSecurity().getSymbol(), "BUY");
+		auto sell = createTestOrder(100.0, 1.0, book.getSecurity().getSymbol(), "SELL");
+		book.insertOrder(buy);
+		book.insertOrder(sell);
 		orderCount += 2;
 	}
 
@@ -61,7 +61,7 @@ int runMatchSimulationBenchmark(std::shared_ptr<Book> book) {
 	return 0;
 }
 
-int runMixedLoadBenchmark(std::shared_ptr<Book> book) {
+int runMixedLoadBenchmark(Book& book) {
 	std::cout << "[Mixed Load Benchmark]\n";
 
 	std::vector<std::shared_ptr<Order>> insertedOrders;
@@ -70,12 +70,12 @@ int runMixedLoadBenchmark(std::shared_ptr<Book> book) {
 	int cancelCount = 0;
 	for (int i = 0; i < 1000000; ++i) {
 		auto type = (i % 2 == 0) ? "BUY" : "SELL";
-		auto order = createTestOrder(100.0 + (i % 5), 1.0, book->getSecurity()->getSymbol(), type);
+		auto order = createTestOrder(100.0 + (i % 5), 1.0, book.getSecurity().getSymbol(), type);
 		insertedOrders.push_back(order);
-		book->insertOrder(order);
+		book.insertOrder(order);
 
 		if (i % 20 == 0 && i > 0) {
-			book->cancelOrder(insertedOrders[i - 20]->id); // occasional cancel
+			book.cancelOrder(insertedOrders[i - 20]->id); // occasional cancel
 			++cancelCount;
 		}
 	}

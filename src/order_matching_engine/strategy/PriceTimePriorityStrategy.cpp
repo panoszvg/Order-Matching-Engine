@@ -9,7 +9,7 @@ void PriceTimePriorityStrategy::matchBuyOrder(std::shared_ptr<Order> newOrder, I
 	auto& sellBuckets = book.getSellOrders();
 	if (sellBuckets.empty()) return;
 
-	double orderPriceBucket = getPriceBucket(newOrder->price, book.getSecurity()->getBucketSize());
+	double orderPriceBucket = getPriceBucket(newOrder->price, book.getSecurity().getBucketSize());
 
 	auto endIt = sellBuckets.upper_bound(orderPriceBucket);
 
@@ -27,7 +27,7 @@ void PriceTimePriorityStrategy::matchSellOrder(std::shared_ptr<Order> newOrder, 
 	auto& buyBuckets = book.getBuyOrders();
 	if (buyBuckets.empty()) return;
 
-	double orderPriceBucket = getPriceBucket(newOrder->price, book.getSecurity()->getBucketSize());
+	double orderPriceBucket = getPriceBucket(newOrder->price, book.getSecurity().getBucketSize());
 
 	for (auto rIt = buyBuckets.rbegin(); rIt != buyBuckets.rend(); ++rIt) {
 		if (rIt->first < orderPriceBucket)

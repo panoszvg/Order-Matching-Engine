@@ -40,22 +40,22 @@ private:
 	map<double, shared_ptr<SellBucket>> sellOrders;
 	shared_ptr<IOrderMatchingStrategy> matcher;
 	BOOK_STRATEGY strategy;
-	shared_ptr<Security> security;
+	unique_ptr<Security> security;
 	void insertOrderUnlocked(std::shared_ptr<Order> order);
 	void cancelOrderUnlocked(const std::string& orderId);
 	shared_ptr<Order> orderLookupUnlocked(const std::string& orderId);
 
 public:
-	explicit Book(shared_ptr<IOrderMatchingStrategy> matcher, shared_ptr<Security> security);
+	explicit Book(shared_ptr<IOrderMatchingStrategy> matcher, unique_ptr<Security> security);
 
 	void insertOrder(shared_ptr<Order> order);
 	void cancelOrder(const string& orderId);
 	void modifyOrder(const string& orderId, double newQty, double newPrice);
-	void setMatchingStrategy(std::shared_ptr<IOrderMatchingStrategy> newMatcher);
-	void setSecurity(std::shared_ptr<Security> security);
+	void setMatchingStrategy(std::unique_ptr<IOrderMatchingStrategy> newMatcher);
+	void setSecurity(std::unique_ptr<Security> security);
 	shared_ptr<Order> orderLookup(const string& orderId); // includes lock, when called by itself
 
-	shared_ptr<Security> getSecurity() override;
+	Security& getSecurity() override;
 	map<double, shared_ptr<BuyBucket>>& getBuyOrders() override;
 	map<double, shared_ptr<SellBucket>>& getSellOrders() override;
 

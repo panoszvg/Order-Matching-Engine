@@ -21,7 +21,7 @@ public:
 	virtual void modifyOrder(const string& orderId, double newQty, double newPrice) = 0;
 	virtual std::shared_ptr<Order> orderLookup(const std::string& id) = 0;
 
-	virtual shared_ptr<Security> getSecurity() = 0;
+	virtual Security& getSecurity() = 0;
 	virtual map<double, shared_ptr<BuyBucket>>& getBuyOrders() = 0;
 	virtual map<double, shared_ptr<SellBucket>>& getSellOrders() = 0;
 

@@ -7,8 +7,8 @@
 #include <sstream>
 #include <stdexcept>
 
-std::unordered_map<string, std::shared_ptr<Security>> SecurityProvider::loadSecurities() {
-	std::unordered_map<string, std::shared_ptr<Security>> securities;
+std::unordered_map<string, std::unique_ptr<Security>> SecurityProvider::loadSecurities() {
+	std::unordered_map<string, std::unique_ptr<Security>> securities;
 
 	std::ifstream in(path);
 	if (!in)
@@ -24,7 +24,7 @@ std::unordered_map<string, std::shared_ptr<Security>> SecurityProvider::loadSecu
 		std::getline(ss, minQty, ',');
 		std::getline(ss, lotSize, ',');
 
-		securities[symbol] = std::make_shared<Security>(symbol, stod(minQty), stod(lotSize));
+		securities[symbol] = std::make_unique<Security>(symbol, stod(minQty), stod(lotSize));
 	}
 
 	return securities;

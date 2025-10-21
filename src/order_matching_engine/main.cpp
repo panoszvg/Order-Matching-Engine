@@ -27,11 +27,10 @@ int main(int argc, char* argv[]) {
 	
 	try {
 		SecurityProvider provider("input_files/securities.csv");
-		std::unordered_map<string, shared_ptr<Security>> securities = provider.loadSecurities();
+		auto securities = provider.loadSecurities();
 		auto strategy = std::make_shared<PriceTimePriorityStrategy>();
-		for (auto [securityStr, security] : securities) {
-			auto book = std::make_shared<Book>(strategy, security);
-			books[securityStr] = book;
+		for (auto& [securityStr, security] : securities) {
+			books[securityStr] = std::make_shared<Book>(strategy, std::move(security));
 		}
 	} catch(std::exception &e) {
 		logger->error("Securities couldn't be read: {}", e.what());
@@ -46,7 +45,7 @@ int main(int argc, char* argv[]) {
 			}
 			if (mode == "benchmark" && argc > 2) {
 				std::string type = argv[2];
-				auto book = books.begin()->second;
+				Book& book = *(books.begin()->second);
 				if (type == "insertcancel") return runInsertCancelBenchmark(book);
 				else if (type == "match") return runMatchSimulationBenchmark(book);
 				else if (type == "mixed") return runMixedLoadBenchmark(book);

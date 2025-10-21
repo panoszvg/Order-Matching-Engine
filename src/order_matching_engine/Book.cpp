@@ -2,7 +2,7 @@
 #include "strategy/PriceTimePriorityStrategy.h"
 #include <string>
 
-Book::Book(std::shared_ptr<IOrderMatchingStrategy> matcher, shared_ptr<Security> security) :
+Book::Book(std::shared_ptr<IOrderMatchingStrategy> matcher, unique_ptr<Security> security) :
 	matcher(std::move(matcher)), security(std::move(security)) {}
 
 void Book::insertOrderUnlocked(shared_ptr<Order> order) {
@@ -116,11 +116,11 @@ void Book::cancelOrder(const string& orderId) {
 	cancelOrderUnlocked(orderId);
 }
 
-void Book::setMatchingStrategy(std::shared_ptr<IOrderMatchingStrategy> newMatcher) {
+void Book::setMatchingStrategy(std::unique_ptr<IOrderMatchingStrategy> newMatcher) {
 	matcher = std::move(newMatcher);
 }
 
-void Book::setSecurity(std::shared_ptr<Security> security) {
+void Book::setSecurity(std::unique_ptr<Security> security) {
 	strategy = std::move(strategy);
 }
 
@@ -129,8 +129,8 @@ shared_ptr<Order> Book::orderLookup(const std::string& orderId) {
     return orderLookupUnlocked(orderId);
 }
 
-shared_ptr<Security> Book::getSecurity() {
-	return this->security;
+Security& Book::getSecurity() {
+	return *(this->security);
 }
 
 map<double, shared_ptr<BuyBucket>>& Book::getBuyOrders() {
@@ -247,6 +247,7 @@ void Book::exportSnapshot() const {
 json Book::toJson() const {
 	json j;
 	j["symbol"] = security->getSymbol();
+	double roundSize = round(1.0 / security->getTickSize());
 
 	j["bids"] = json::array();
 	for (auto it = buyOrders.rbegin(); it != buyOrders.rend(); ++it) {
@@ -256,8 +257,8 @@ json Book::toJson() const {
 			continue;
 
 		j["bids"].push_back({
-			{"price", round(price)},
-			{"quantity", round(bucket->total_quantity)}
+			{"price", round(price * roundSize) / roundSize},
+			{"quantity", round(bucket->total_quantity * roundSize) / roundSize}
 		});
 	}
 
@@ -267,8 +268,8 @@ json Book::toJson() const {
 			continue;
 
 		j["asks"].push_back({
-			{"price", round(price)},
-			{"quantity", round(bucket->total_quantity)}
+			{"price", round(price * roundSize) / roundSize},
+			{"quantity", round(bucket->total_quantity * roundSize) / roundSize}
 		});
 	}
 

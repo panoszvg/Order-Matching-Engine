@@ -10,7 +10,7 @@
 
 struct ISecurityProvider {
 private:
-	virtual std::unordered_map<string, std::shared_ptr<Security>> loadSecurities() = 0;
+	virtual std::unordered_map<string, std::unique_ptr<Security>> loadSecurities() = 0;
 
 public:
 	virtual ~ISecurityProvider() = default;
