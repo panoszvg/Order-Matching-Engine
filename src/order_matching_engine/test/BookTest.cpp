@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
-#include "../Book.h"
-#include "../strategy/PriceTimePriorityStrategy.h"
+#include "Book.h"
+#include "strategy/PriceTimePriorityStrategy.h"
 #include <vector>
 
 TEST(Book, Instantiation) {

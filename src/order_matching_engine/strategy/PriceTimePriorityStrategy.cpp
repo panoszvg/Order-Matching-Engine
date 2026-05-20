@@ -1,7 +1,7 @@
 #include "PriceTimePriorityStrategy.h"
-#include "../headers/Buckets.h"
-#include "../headers/Math.h"
-#include "../IOrderBook.h"
+#include "headers/Buckets.h"
+#include "headers/Math.h"
+#include "IOrderBook.h"
 
 void PriceTimePriorityStrategy::matchBuyOrder(std::shared_ptr<Order> newOrder, IOrderBook& book) {
 	if (book.getSellOrders().empty()) return;

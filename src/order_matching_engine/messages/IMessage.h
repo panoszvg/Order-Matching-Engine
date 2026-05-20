@@ -1,7 +1,7 @@
 #ifndef IMESSAGE_H
 #define IMESSAGE_H
 
-#include "../Order.h"
+#include "Order.h"
 #include <memory>
 
 using std::shared_ptr;

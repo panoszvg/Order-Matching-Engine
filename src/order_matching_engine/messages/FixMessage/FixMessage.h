@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "../../Logger.h"
-#include "../IMessage.h"
+#include "Logger.h"
+#include "messages/IMessage.h"
 #include "FixMap.h"
 #include <map>
 #include <memory>

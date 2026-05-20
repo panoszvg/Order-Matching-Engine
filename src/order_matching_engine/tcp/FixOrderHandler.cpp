@@ -1,5 +1,5 @@
 #include "FixOrderHandler.h"
-#include "../messages/FixMessage/FixMessage.h"
+#include "messages/FixMessage/FixMessage.h"
 
 FixOrderHandler::FixOrderHandler(std::unordered_map<std::string, std::shared_ptr<Book>>& books)
 	: books_(books) {}

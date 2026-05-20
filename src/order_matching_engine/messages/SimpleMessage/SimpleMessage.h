@@ -1,7 +1,7 @@
 #ifndef ISIMPLEMESSAGE_H
 #define ISIMPLEMESSAGE_H
 
-#include "../IMessage.h"
+#include "messages/IMessage.h"
 #include <unordered_map>
 
 class SimpleMessage : public IMessage {

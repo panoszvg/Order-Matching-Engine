@@ -1,11 +1,11 @@
 #ifndef FIXORDERHANDLER_H
 #define FIXORDERHANDLER_H
 
-#include "../Book.h"
-#include "../Logger.h"
+#include "Book.h"
+#include "Logger.h"
 #include "IMessageHandler.h"
 #include "TcpSession.h"
-#include "../messages/FixMessage/FixMessage.h"
+#include "messages/FixMessage/FixMessage.h"
 #include <memory>
 #include <unordered_map>
 

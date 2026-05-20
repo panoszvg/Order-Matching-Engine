@@ -1,6 +1,8 @@
+MAKEFLAGS += -j4
+
 CXX = g++
 CXXFLAGS = -std=c++17 -pthread
-INCLUDES = -I./
+INCLUDES = -I./ -I./core
 
 UNAME_S := $(shell uname -s)
 
@@ -14,13 +16,13 @@ ifeq ($(findstring MINGW,$(UNAME_S)),MINGW)
     LIBS_TEST = $(LIBS) -lgmock_main -lgmock -lgtest
 endif
 
-SRC_CODE = 	$(wildcard *.cpp) \
+SRC_CODE = 	$(wildcard core/*.cpp) \
 			$(wildcard tcp/*.cpp) \
 			$(wildcard strategy/*.cpp) \
 			$(wildcard messages/FixMessage/*.cpp) \
 			$(wildcard messages/SimpleMessage/*.cpp) \
 			$(wildcard benchmark/*.cpp)
-SRC_MAIN = main.cpp
+SRC_MAIN = core/main.cpp
 SRC_TEST = $(wildcard test/*.cpp)
 
 OBJ_CODE = $(SRC_CODE:.cpp=.o)
