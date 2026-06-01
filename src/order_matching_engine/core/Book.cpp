@@ -27,6 +27,9 @@ void Book::insertOrderUnlocked(Order& order) {
 		throw invalid_argument(oss.str());
 	}
 
+	if (allOrders.count(order.id))
+		throw invalid_argument("Duplicate order ID: " + order.id);
+
 	allOrders.insert({order.id, order});
 	Order& stored = allOrders.at(order.id);
 
@@ -60,8 +63,8 @@ void Book::cancelOrderUnlocked(const string& orderId) {
 		}
 		
 		order.fulfilled = CANCELLED;
-	} catch (const std::out_of_range &e) {
-		logger->error("Order {} doesn't exist", orderId);
+	} catch (const std::out_of_range&) {
+		throw invalid_argument("Cancel failed: order " + orderId + " does not exist");
 	}
 }
 
@@ -74,20 +77,22 @@ void Book::modifyOrder(const string& orderId, double newQty, double newPrice) {
 	try {
 		auto& order = orderLookupUnlocked(orderId);
 		
-		// Check new quantity against the existing quantity
-		if (newQty < order.quantity) {
+		double filledQty = order.originalQuantity - order.quantity;
+		if (compareDoubles(newQty, filledQty) <= 0) {
 			ostringstream oss;
-			oss << "New quantity (" << newQty << ") cannot be less than the existing quantity (" << order.quantity << ")";
+			oss << "New quantity (" << newQty << ") must be greater than already filled quantity (" << filledQty << ")";
 			throw invalid_argument(oss.str());
 		}
 		
 		cancelOrderUnlocked(orderId);
-		auto modifiedOrder = std::make_unique<Order>(order.security, order.type, newQty, newPrice);
+		auto modifiedOrder = std::make_unique<Order>(order.security, order.type, newQty - filledQty, newPrice);
+		modifiedOrder->originalQuantity = newQty;
 		
 		try {
 			insertOrderUnlocked(*modifiedOrder);
 		} catch (const invalid_argument& arg) {
 			logger->error("Order rejected: {}", arg.what());
+			throw;
 		}
 		
 	} catch (const std::out_of_range &e) {

@@ -30,6 +30,7 @@ public:
 	string id;
 	string security;
 	OrderType type;
+	double originalQuantity;
 	double quantity;
 	double price;
 	Fulfilled fulfilled;

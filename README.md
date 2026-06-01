@@ -1,6 +1,6 @@
 # Order-Matching Engine
 
-A WIP **C++17 trading engine** with TCP order ingress, price–time matching, JSON snapshots, and a Python Flask API. Redis/WebSocket integration is planned.
+A WIP **C++17 trading engine** with TCP order ingress, price–time matching, JSON snapshots, and a Python Flask API.
 
 ## Features
 - Price–time priority order matching
