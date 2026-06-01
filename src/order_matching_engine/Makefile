@@ -16,7 +16,7 @@ ifeq ($(findstring MINGW,$(UNAME_S)),MINGW)
     LIBS_TEST = $(LIBS) -lgmock_main -lgmock -lgtest
 endif
 
-SRC_CODE = 	$(wildcard core/*.cpp) \
+SRC_CODE = 	$(filter-out core/main.cpp, $(wildcard core/*.cpp)) \
 			$(wildcard tcp/*.cpp) \
 			$(wildcard strategy/*.cpp) \
 			$(wildcard messages/FixMessage/*.cpp) \
