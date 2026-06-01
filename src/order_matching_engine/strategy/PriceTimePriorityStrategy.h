@@ -4,25 +4,21 @@
 #pragma once
 
 #include "headers/Math.h"
+#include "headers/Buckets.h"
 #include "IOrderMatchingStrategy.h"
-#include <memory>
 
 class IOrderBook;
-class BuyBucket;
-class SellBucket;
 
 class PriceTimePriorityStrategy : public IOrderMatchingStrategy {
 private:
-	void matchBuyOrder(std::shared_ptr<Order> order, IOrderBook& book);
-	void matchSellOrder(std::shared_ptr<Order> order, IOrderBook& book);
-	void matchBuyAgainstBucket(std::shared_ptr<Order>& buyOrder, std::shared_ptr<SellBucket>& bucket);
-	void matchSellAgainstBucket(std::shared_ptr<Order>& sellOrder, std::shared_ptr<BuyBucket>& bucket);
+	void matchBuyOrder(Order& order, IOrderBook& book);
+	void matchSellOrder(Order& order, IOrderBook& book);
+	void matchBuyAgainstBucket(Order& buyOrder, SellBucket& bucket, OrderMap& orders);
+	void matchSellAgainstBucket(Order& sellOrder, BuyBucket& bucket, OrderMap& orders);
 
 public:
 	PriceTimePriorityStrategy() = default;
-
-	void matchOrder(std::shared_ptr<Order> order, IOrderBook& book) override;
-
+	void matchOrder(Order& order, IOrderBook& book) override;
 };
 
 #endif // PRICETIMEPRIORITYSTRATEGY_H

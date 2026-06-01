@@ -5,40 +5,42 @@
 
 #include "core/Order.h"
 #include <queue>
-#include <deque>
-#include <memory>
+#include <string>
+#include <vector>
+#include <unordered_map>
 
-using std::deque;
-using std::shared_ptr;
-using std::priority_queue;
+using OrderMap = std::unordered_map<std::string, Order>;
 
-class CompareBuy {
-	public:
-	bool operator() (shared_ptr<Order> o1, shared_ptr<Order> o2) {
-		if (o1->price == o2->price)
-			return o1->timestamp > o2->timestamp;
-		return o1->price < o2->price;
-	}
-};
-class CompareSell {
-	public:
-	bool operator() (shared_ptr<Order> o1, shared_ptr<Order> o2) {
-		if (o1->price == o2->price)
-			return o1->timestamp > o2->timestamp;
-		return o1->price > o2->price;
+struct CompareBuy {
+	const OrderMap& orders;
+	explicit CompareBuy(const OrderMap& orders) : orders(orders) {}
+	bool operator()(const std::string& a, const std::string& b) const {
+		const Order& oa = orders.at(a);
+		const Order& ob = orders.at(b);
+		if (oa.price == ob.price) return oa.timestamp > ob.timestamp;
+		return oa.price < ob.price;
 	}
 };
 
-class BuyBucket {
-	public:
-	priority_queue<shared_ptr<Order>, deque<shared_ptr<Order>>, CompareBuy> bucket;
-	double total_quantity = 0;
+struct CompareSell {
+	const OrderMap& orders;
+	explicit CompareSell(const OrderMap& orders) : orders(orders) {}
+	bool operator()(const std::string& a, const std::string& b) const {
+		const Order& oa = orders.at(a);
+		const Order& ob = orders.at(b);
+		if (oa.price == ob.price) return oa.timestamp > ob.timestamp;
+		return oa.price > ob.price;
+	}
 };
 
-class SellBucket {
-	public:
-	priority_queue<shared_ptr<Order>, deque<shared_ptr<Order>>, CompareSell> bucket;
+template<typename Compare>
+struct Bucket {
+	std::priority_queue<std::string, std::vector<std::string>, Compare> queue;
 	double total_quantity = 0;
+	explicit Bucket(Compare cmp) : queue(std::move(cmp)) {}
 };
+
+using BuyBucket  = Bucket<CompareBuy>;
+using SellBucket = Bucket<CompareSell>;
 
 #endif // BUCKETS_H

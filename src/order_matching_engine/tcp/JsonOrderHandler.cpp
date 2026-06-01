@@ -14,11 +14,11 @@ void JsonOrderHandler::handle(const std::string& rawMessage, TcpSession& session
 
 		OrderType type = (typeStr == "BUY") ? BUY : SELL;
 
-		auto order = std::make_shared<Order>(security, type, quantity, price);
+		auto order = std::make_unique<Order>(security, type, quantity, price);
 
 		if (books_.count(security)) {
 			try {
-				books_.at(security)->insertOrder(order);
+				books_.at(security)->insertOrder(*order);
 				session.send(R"({"status":"ok","message":"Order accepted"})");
 			} catch (const std::invalid_argument& arg) {
 				logger->error("Order rejected: {}", arg.what());

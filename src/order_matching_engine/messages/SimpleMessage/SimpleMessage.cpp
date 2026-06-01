@@ -20,12 +20,11 @@ void SimpleMessage::populate(const string& message) {
 
 void SimpleMessage::isValid() {}
 
-shared_ptr<Order> SimpleMessage::makeOrder() {
+Order SimpleMessage::makeOrder() {
 	string  tag_55 = fields[55];
 	int     tag_54 = stoi(fields[54]);
 	double  tag_38 = stod(fields[38]);
 	double  tag_44 = stod(fields[44]);
 
-	shared_ptr<Order> newOrder = make_shared<Order>(tag_55, (tag_54 == 1) ? BUY : SELL, tag_38, tag_44);
-	return newOrder;
+	return Order(tag_55, (tag_54 == 1) ? BUY : SELL, tag_38, tag_44);
 }

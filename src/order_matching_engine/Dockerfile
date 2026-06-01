@@ -2,7 +2,7 @@
 FROM debian:bullseye AS build
 
 RUN apt-get update && apt-get install -y \
-    g++ make cmake git \
+    g++ make \
     libspdlog-dev libboost-all-dev libfmt-dev \
     nlohmann-json3-dev \
     && rm -rf /var/lib/apt/lists/*

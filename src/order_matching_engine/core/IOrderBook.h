@@ -5,27 +5,25 @@
 #include "Security.h"
 #include "headers/Math.h"
 #include "headers/Buckets.h"
-#include <map>
 #include <memory>
-#include <vector>
 #include <unordered_map>
 
-using std::map;
 using std::shared_ptr;
 using std::unordered_map;
 
 class IOrderBook {
 public:
-	virtual void insertOrder(std::shared_ptr<Order> order) = 0;
+	virtual void insertOrder(Order& order) = 0;
 	virtual void cancelOrder(const std::string& id) = 0;
 	virtual void modifyOrder(const string& orderId, double newQty, double newPrice) = 0;
-	virtual std::shared_ptr<Order> orderLookup(const std::string& id) = 0;
+	virtual Order& orderLookup(const std::string& id) = 0;
 
 	virtual Security& getSecurity() = 0;
-	virtual map<double, shared_ptr<BuyBucket>>& getBuyOrders() = 0;
-	virtual map<double, shared_ptr<SellBucket>>& getSellOrders() = 0;
+	virtual OrderMap& getOrders() = 0;
+	virtual BuyBucket& getBuyOrders() = 0;
+	virtual SellBucket& getSellOrders() = 0;
 
-	virtual void cleanUpBuckets(shared_ptr<Order> order) {
+	virtual void cleanUpBuckets(Order& order) {
 		// Default : do nothing
 	}
 	virtual void printBuyOrders() {

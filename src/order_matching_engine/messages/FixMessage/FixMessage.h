@@ -25,7 +25,7 @@ public:
 	FixMessage();
 	void populate(const string& message) override;
 	void isValid() override;
-	shared_ptr<Order> makeOrder() override;
+	Order makeOrder() override;
 	string getValue(int tag);
 
 	void print();

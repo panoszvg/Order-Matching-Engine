@@ -6,15 +6,15 @@
 
 using Clock = std::chrono::high_resolution_clock;
 
-std::shared_ptr<Order> createTestOrder(double price, double quantity, const std::string& security = "TEST", const std::string& typeStr = "BUY") {
+Order createTestOrder(double price, double quantity, const std::string& security = "TEST", const std::string& typeStr = "BUY") {
 	OrderType type = (typeStr == "BUY") ? BUY : SELL;
-	return std::make_shared<Order>(security, type, price, quantity);
+	return Order(security, type, price, quantity);
 }
 
 int runInsertCancelBenchmark(Book& book) {
 	std::cout << "[Insert + Cancel Benchmark]\n";
 
-	std::vector<std::shared_ptr<Order>> insertedOrders;
+	std::vector<Order> insertedOrders;
 	auto start = Clock::now();
 
 	for (int i = 0; i < 1000000; ++i) {
@@ -24,7 +24,7 @@ int runInsertCancelBenchmark(Book& book) {
 	}
 
 	for (int i = 0; i < 100000; ++i) {
-		book.cancelOrder(insertedOrders[i]->id);
+		book.cancelOrder(insertedOrders[i].id);
 	}
 
 	auto end = Clock::now();
@@ -64,7 +64,7 @@ int runMatchSimulationBenchmark(Book& book) {
 int runMixedLoadBenchmark(Book& book) {
 	std::cout << "[Mixed Load Benchmark]\n";
 
-	std::vector<std::shared_ptr<Order>> insertedOrders;
+	std::vector<Order> insertedOrders;
 	auto start = Clock::now();
 
 	int cancelCount = 0;
@@ -75,7 +75,7 @@ int runMixedLoadBenchmark(Book& book) {
 		book.insertOrder(order);
 
 		if (i % 20 == 0 && i > 0) {
-			book.cancelOrder(insertedOrders[i - 20]->id); // occasional cancel
+			book.cancelOrder(insertedOrders[i - 20].id); // occasional cancel
 			++cancelCount;
 		}
 	}

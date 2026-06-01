@@ -68,7 +68,7 @@ int main(int argc, char* argv[]) {
 		auto newMessage = parser->parse(line);
 		auto newOrder = newMessage->makeOrder();
 		try {
-			books[newOrder->security]->insertOrder(newOrder);
+			books[newOrder.security]->insertOrder(newOrder);
 		} catch (const std::invalid_argument& arg) {
 			logger->error("Order rejected: {}", arg.what());
 		}

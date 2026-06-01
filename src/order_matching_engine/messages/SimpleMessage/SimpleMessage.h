@@ -11,7 +11,7 @@ private:
 public:
 	void populate(const string& message) override;
 	void isValid() override;
-	shared_ptr<Order> makeOrder() override;
+	Order makeOrder() override;
 };
 
 #endif // ISIMPLEMESSAGE_H

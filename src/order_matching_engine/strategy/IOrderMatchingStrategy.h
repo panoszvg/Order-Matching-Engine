@@ -7,7 +7,7 @@ class IOrderBook;
 
 class IOrderMatchingStrategy {
 public:
-	virtual void matchOrder(std::shared_ptr<Order> order, IOrderBook& book) = 0;
+	virtual void matchOrder(Order& order, IOrderBook& book) = 0;
 	virtual ~IOrderMatchingStrategy() = default;
 };
 

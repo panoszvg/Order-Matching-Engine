@@ -3,100 +3,89 @@
 #include <string>
 
 Book::Book(std::shared_ptr<IOrderMatchingStrategy> matcher, unique_ptr<Security> security) :
-	matcher(std::move(matcher)), security(std::move(security)) {}
+	matcher(std::move(matcher)), security(std::move(security)),
+	buyOrders(CompareBuy(allOrders)), sellOrders(CompareSell(allOrders)) {}
 
-void Book::insertOrderUnlocked(shared_ptr<Order> order) {
+void Book::insertOrderUnlocked(Order& order) {
 	double orderSecurityTick = security->getTickSize();
 	
-	if (compareDoubles(order->price, 0.0) <= 0) {
+	if (compareDoubles(order.price, 0.0) <= 0) {
 		ostringstream oss;
-		oss << "Price (" << order->price << ") must be greater than zero";
+		oss << "Price (" << order.price << ") must be greater than zero";
 		throw invalid_argument(oss.str());
 	}
 	
-	if (compareDoubles(order->quantity, 0.0) <= 0) {
+	if (compareDoubles(order.quantity, 0.0) <= 0) {
 		ostringstream oss;
-		oss << "Quantity (" << order->quantity << ") must be greater than zero";
+		oss << "Quantity (" << order.quantity << ") must be greater than zero";
 		throw invalid_argument(oss.str());
 	}
 	
-	if (!isPriceTickAligned(order->price, orderSecurityTick)) {
+	if (!isPriceTickAligned(order.price, orderSecurityTick)) {
 		ostringstream oss;
-		oss << "Order price (" << order->price << ") does not align with tick size (" << orderSecurityTick << ")";
+		oss << "Order price (" << order.price << ") does not align with tick size (" << orderSecurityTick << ")";
 		throw invalid_argument(oss.str());
 	}
 
-	order->timestamp = std::chrono::system_clock::now();
-	logger->info("Insert order {} @ {} μs | Price: {} | Qty: {}",
-				  order->id, order->getMicroTimestamp(), order->price, order->quantity);
-	matcher->matchOrder(order, *this);
-	auto newOrder = order;
-	if (order->fulfilled != FULLY_FULFILLED && order->fulfilled != CANCELLED) {
-		double priceBucket = getPriceBucket(order->price, security->getBucketSize());
-		if (order->type == BUY) {
-			if (buyOrders.find(priceBucket) == buyOrders.end())
-			buyOrders[priceBucket] = std::make_shared<BuyBucket>();
-			buyOrders[priceBucket]->bucket.push(newOrder);	
-			buyOrders[priceBucket]->total_quantity += newOrder->quantity;
-		}
-		else {
-			if (sellOrders.find(priceBucket) == sellOrders.end())
-			sellOrders[priceBucket] = std::make_shared<SellBucket>();
-			sellOrders[priceBucket]->bucket.push(newOrder);	
-			sellOrders[priceBucket]->total_quantity += newOrder->quantity;
+	allOrders.insert({order.id, order});
+	Order& stored = allOrders.at(order.id);
+
+	matcher->matchOrder(stored, *this);
+
+	if (stored.fulfilled != FULLY_FULFILLED && stored.fulfilled != CANCELLED) {
+		if (stored.type == BUY) {
+			buyOrders.queue.push(stored.id);
+			buyOrders.total_quantity += stored.quantity;
+		} else {
+			sellOrders.queue.push(stored.id);
+			sellOrders.total_quantity += stored.quantity;
 		}
 	}
-	allOrders.insert({newOrder->id, newOrder});
 }
 
 void Book::cancelOrderUnlocked(const string& orderId) {
 	try {
-		auto order = orderLookupUnlocked(orderId);
+		auto& order = orderLookupUnlocked(orderId);
 
-		if (order->fulfilled == CANCELLED || order->fulfilled == FULLY_FULFILLED) {
+		if (order.fulfilled == CANCELLED || order.fulfilled == FULLY_FULFILLED) {
 			return;
 		}
 
-		double bucketPrice = getPriceBucket(order->price, security->getBucketSize());
-		if (order->type == BUY) {
-			auto& bucket = buyOrders[bucketPrice];
-			if (order->quantity > 0) {
-				bucket->total_quantity -= order->quantity;
-			}
+		if (order.type == BUY) {
+			if (order.quantity > 0)
+				buyOrders.total_quantity -= order.quantity;
 		} else {
-			auto& bucket = sellOrders[bucketPrice];
-			if (order->quantity > 0) {
-				bucket->total_quantity -= order->quantity;
-			}
+			if (order.quantity > 0)
+				sellOrders.total_quantity -= order.quantity;
 		}
 		
-		order->fulfilled = CANCELLED;
+		order.fulfilled = CANCELLED;
 	} catch (const std::out_of_range &e) {
 		logger->error("Order {} doesn't exist", orderId);
 	}
 }
 
-shared_ptr<Order> Book::orderLookupUnlocked(const std::string& orderId) {
+Order& Book::orderLookupUnlocked(const std::string& orderId) {
     return allOrders.at(orderId);
 }
 
 void Book::modifyOrder(const string& orderId, double newQty, double newPrice) {
 	std::lock_guard<std::mutex> lock(bookMutex);
 	try {
-		auto order = orderLookupUnlocked(orderId);
+		auto& order = orderLookupUnlocked(orderId);
 		
 		// Check new quantity against the existing quantity
-		if (newQty < order->quantity) {
+		if (newQty < order.quantity) {
 			ostringstream oss;
-			oss << "New quantity (" << newQty << ") cannot be less than the existing quantity (" << order->quantity << ")";
+			oss << "New quantity (" << newQty << ") cannot be less than the existing quantity (" << order.quantity << ")";
 			throw invalid_argument(oss.str());
 		}
 		
 		cancelOrderUnlocked(orderId);
-		shared_ptr<Order> modifiedOrder = std::make_shared<Order>(order->security, order->type, newQty, newPrice);
+		auto modifiedOrder = std::make_unique<Order>(order.security, order.type, newQty, newPrice);
 		
 		try {
-			insertOrderUnlocked(modifiedOrder);
+			insertOrderUnlocked(*modifiedOrder);
 		} catch (const invalid_argument& arg) {
 			logger->error("Order rejected: {}", arg.what());
 		}
@@ -106,7 +95,7 @@ void Book::modifyOrder(const string& orderId, double newQty, double newPrice) {
 	}
 }
 
-void Book::insertOrder(shared_ptr<Order> order) {
+void Book::insertOrder(Order& order) {
 	std::lock_guard<std::mutex> lock(bookMutex);
 	insertOrderUnlocked(order);
 }
@@ -120,11 +109,11 @@ void Book::setMatchingStrategy(std::unique_ptr<IOrderMatchingStrategy> newMatche
 	matcher = std::move(newMatcher);
 }
 
-void Book::setSecurity(std::unique_ptr<Security> security) {
-	strategy = std::move(strategy);
+void Book::setSecurity(std::unique_ptr<Security> sec) {
+	security = std::move(sec);
 }
 
-shared_ptr<Order> Book::orderLookup(const std::string& orderId) {
+Order& Book::orderLookup(const std::string& orderId) {
     std::lock_guard<std::mutex> lock(bookMutex);
     return orderLookupUnlocked(orderId);
 }
@@ -133,97 +122,74 @@ Security& Book::getSecurity() {
 	return *(this->security);
 }
 
-map<double, shared_ptr<BuyBucket>>& Book::getBuyOrders() {
+OrderMap& Book::getOrders() {
+	return allOrders;
+}
+
+BuyBucket& Book::getBuyOrders() {
 	return buyOrders;
 }
 
-map<double, shared_ptr<SellBucket>>& Book::getSellOrders() {
+SellBucket& Book::getSellOrders() {
 	return sellOrders;
 }
 
-void Book::cleanUpBuckets(shared_ptr<Order> order){
-	if (order->type == BUY) {
-		auto& book = sellOrders;
-		for (auto it = book.begin(); it != book.end(); ) {
-			if (it->second->bucket.empty())
-				it = book.erase(it);
-			else
-				++it;
-			}
-		}
-	else {
-		auto& book = buyOrders;
-		for (auto it = book.begin(); it != book.end(); ) {
-			if (it->second->bucket.empty())
-				it = book.erase(it);
-			else
-				++it;
-		}
-	}
-}
+void Book::cleanUpBuckets(Order& order) {}
 
 void Book::printBuyOrders() {
-	if (buyOrders.empty()) {
+	if (buyOrders.queue.empty()) {
 		logger->info("# No Buy Orders");
 		return;
 	}
 	logger->info("# Buy Orders");
 	logger->info("=============");
-	for (auto [price, bucketContainer] : buyOrders) {
-		logger->info("Bucket for {:.6}:", price);
-		logger->info("  total_quantity: {:.6}", bucketContainer->total_quantity);
-		auto tempBucket = bucketContainer->bucket;
-		while (!tempBucket.empty()) {
-			auto top = tempBucket.top();
-			tempBucket.pop();
-			top->print();
-		}
+	logger->info("  total_quantity: {:.6}", buyOrders.total_quantity);
+	auto tempQueue = buyOrders.queue;
+	while (!tempQueue.empty()) {
+		allOrders.at(tempQueue.top()).print();
+		tempQueue.pop();
 	}
 }
 
 void Book::printBuyOrdersFromAll() {
-	if (buyOrders.empty()) {
+	if (buyOrders.queue.empty()) {
 		logger->info("# No Buy Orders");
 		return;
 	}
 	logger->info("# Buy Orders");
 	logger->info("=============");
 	for (auto& [securityString, order] : allOrders) {
-		if (order->type == BUY && (order->fulfilled == NOT_FULFILLED || order->fulfilled == PARTIALLY_FULFILLED)) {
-			order->print();
+		if (order.type == BUY && (order.fulfilled == NOT_FULFILLED || order.fulfilled == PARTIALLY_FULFILLED)) {
+			order.print();
 		}
 	}
 }
 
 void Book::printSellOrders() {
-	if (sellOrders.empty()) {
-		logger->info("No Sell Orders");
+	if (sellOrders.queue.empty()) {
+		logger->info("# No Sell Orders");
 		return;
 	}
 	logger->info("# Sell Orders");
 	logger->info("=============");
-	for (auto [price, bucketContainer] : sellOrders) {
-		logger->info("Bucket for {:.6}:", price);
-		logger->info("  total_quantity: {:.6}", bucketContainer->total_quantity);
-		auto tempBucket = bucketContainer->bucket;
-		while (!tempBucket.empty()) {
-			auto top = tempBucket.top();
-			tempBucket.pop();
-			top->print();
-		}
+	logger->info("  total_quantity: {:.6}", sellOrders.total_quantity);
+	auto tempQueue = sellOrders.queue;
+	while (!tempQueue.empty()) {
+		allOrders.at(tempQueue.top()).print();
+		tempQueue.pop();
 	}
 }	
 
 void Book::printSellOrdersFromAll() {
-	if (sellOrders.empty()) {
+	if (sellOrders.queue.empty()) {
 		logger->info("No Sell Orders");
 		return;
 	}
 	logger->info("# Sell Orders");
 	logger->info("=============");
 	for (auto& [securityString, order] : allOrders) {
-		if (order->type == SELL && (order->fulfilled == NOT_FULFILLED || order->fulfilled == PARTIALLY_FULFILLED)) {
-			order->print();
+		if (order.type == SELL && (order.fulfilled == NOT_FULFILLED || order.fulfilled == PARTIALLY_FULFILLED)) {
+			order.print();
 		}
 	}
 }
@@ -250,27 +216,29 @@ json Book::toJson() const {
 	double roundSize = round(1.0 / security->getTickSize());
 
 	j["bids"] = json::array();
-	for (auto it = buyOrders.rbegin(); it != buyOrders.rend(); ++it) {
-		double price = it->first;
-		const auto& bucket = it->second;
-		if (!bucket || bucket->total_quantity <= 0)
-			continue;
-
-		j["bids"].push_back({
-			{"price", round(price * roundSize) / roundSize},
-			{"quantity", round(bucket->total_quantity * roundSize) / roundSize}
-		});
+	if (!buyOrders.queue.empty()) {
+		auto tempQueue = buyOrders.queue;
+		while (!tempQueue.empty()) {
+			const Order& o = allOrders.at(tempQueue.top());
+			tempQueue.pop();
+			j["bids"].push_back({
+				{"price",    round(o.price    * roundSize) / roundSize},
+				{"quantity", round(o.quantity * roundSize) / roundSize}
+			});
+		}
 	}
 
 	j["asks"] = json::array();
-	for (const auto& [price, bucket] : sellOrders) {
-		if (!bucket || bucket->total_quantity <= 0)
-			continue;
-
-		j["asks"].push_back({
-			{"price", round(price * roundSize) / roundSize},
-			{"quantity", round(bucket->total_quantity * roundSize) / roundSize}
-		});
+	if (!sellOrders.queue.empty()) {
+		auto tempQueue = sellOrders.queue;
+		while (!tempQueue.empty()) {
+			const Order& o = allOrders.at(tempQueue.top());
+			tempQueue.pop();
+			j["asks"].push_back({
+				{"price",    round(o.price    * roundSize) / roundSize},
+				{"quantity", round(o.quantity * roundSize) / roundSize}
+			});
+		}
 	}
 
 	return j;
