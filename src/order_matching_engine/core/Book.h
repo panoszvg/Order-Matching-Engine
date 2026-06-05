@@ -49,7 +49,6 @@ public:
 	BuyBucket& getBuyOrders() override;
 	SellBucket& getSellOrders() override;
 
-	void cleanUpBuckets(Order& order) override;
 	void printBuyOrders() override;
 	void printBuyOrdersFromAll() override;
 	void printSellOrders() override;

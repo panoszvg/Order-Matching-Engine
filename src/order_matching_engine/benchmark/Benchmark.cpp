@@ -8,7 +8,7 @@ using Clock = std::chrono::high_resolution_clock;
 
 Order createTestOrder(double price, double quantity, const std::string& security = "TEST", const std::string& typeStr = "BUY") {
 	OrderType type = (typeStr == "BUY") ? BUY : SELL;
-	return Order(security, type, price, quantity);
+	return Order(security, type, quantity, price);
 }
 
 int runInsertCancelBenchmark(Book& book) {

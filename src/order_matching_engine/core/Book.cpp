@@ -97,6 +97,7 @@ void Book::modifyOrder(const string& orderId, double newQty, double newPrice) {
 		
 	} catch (const std::out_of_range &e) {
 		logger->error("Order {} doesn't exist", orderId);
+		throw;
 	}
 }
 
@@ -139,8 +140,6 @@ SellBucket& Book::getSellOrders() {
 	return sellOrders;
 }
 
-void Book::cleanUpBuckets(Order& order) {}
-
 void Book::printBuyOrders() {
 	if (buyOrders.queue.empty()) {
 		logger->info("# No Buy Orders");
@@ -151,8 +150,11 @@ void Book::printBuyOrders() {
 	logger->info("  total_quantity: {:.6}", buyOrders.total_quantity);
 	auto tempQueue = buyOrders.queue;
 	while (!tempQueue.empty()) {
-		allOrders.at(tempQueue.top()).print();
+		const auto& order = allOrders.at(tempQueue.top());
 		tempQueue.pop();
+		if (order.fulfilled == FULLY_FULFILLED || order.fulfilled == CANCELLED)
+			continue;
+		order.print();
 	}
 }
 
@@ -180,10 +182,13 @@ void Book::printSellOrders() {
 	logger->info("  total_quantity: {:.6}", sellOrders.total_quantity);
 	auto tempQueue = sellOrders.queue;
 	while (!tempQueue.empty()) {
-		allOrders.at(tempQueue.top()).print();
+		const auto& order = allOrders.at(tempQueue.top());
 		tempQueue.pop();
+		if (order.fulfilled == FULLY_FULFILLED || order.fulfilled == CANCELLED)
+			continue;
+		order.print();
 	}
-}	
+}
 
 void Book::printSellOrdersFromAll() {
 	if (sellOrders.queue.empty()) {
@@ -226,6 +231,8 @@ json Book::toJson() const {
 		while (!tempQueue.empty()) {
 			const Order& o = allOrders.at(tempQueue.top());
 			tempQueue.pop();
+			if (o.fulfilled == FULLY_FULFILLED || o.fulfilled == CANCELLED)
+				continue;
 			j["bids"].push_back({
 				{"price",    round(o.price    * roundSize) / roundSize},
 				{"quantity", round(o.quantity * roundSize) / roundSize}
@@ -239,6 +246,8 @@ json Book::toJson() const {
 		while (!tempQueue.empty()) {
 			const Order& o = allOrders.at(tempQueue.top());
 			tempQueue.pop();
+			if (o.fulfilled == FULLY_FULFILLED || o.fulfilled == CANCELLED)
+				continue;
 			j["asks"].push_back({
 				{"price",    round(o.price    * roundSize) / roundSize},
 				{"quantity", round(o.quantity * roundSize) / roundSize}

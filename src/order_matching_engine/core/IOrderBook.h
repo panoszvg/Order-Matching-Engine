@@ -23,9 +23,6 @@ public:
 	virtual BuyBucket& getBuyOrders() = 0;
 	virtual SellBucket& getSellOrders() = 0;
 
-	virtual void cleanUpBuckets(Order& order) {
-		// Default : do nothing
-	}
 	virtual void printBuyOrders() {
 		// Default : do nothing
 	}

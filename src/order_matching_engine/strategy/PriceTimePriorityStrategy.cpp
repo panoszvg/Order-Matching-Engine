@@ -73,5 +73,4 @@ void PriceTimePriorityStrategy::matchOrder(Order& order, IOrderBook& book) {
 		matchBuyOrder(order, book);
 	else
 		matchSellOrder(order, book);
-	book.cleanUpBuckets(order);
 }
