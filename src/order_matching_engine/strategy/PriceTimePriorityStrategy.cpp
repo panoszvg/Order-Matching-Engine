@@ -4,26 +4,23 @@
 
 void PriceTimePriorityStrategy::matchBuyOrder(Order& newOrder, IOrderBook& book) {
 	auto& sellBucket = book.getSellOrders();
-	if (sellBucket.queue.empty()) return;
+	if (sellBucket.empty()) return;
 	matchBuyAgainstBucket(newOrder, sellBucket, book.getOrders());
 }
 
 void PriceTimePriorityStrategy::matchSellOrder(Order& newOrder, IOrderBook& book) {
 	auto& buyBucket = book.getBuyOrders();
-	if (buyBucket.queue.empty()) return;
+	if (buyBucket.empty()) return;
 	matchSellAgainstBucket(newOrder, buyBucket, book.getOrders());
 }
 
 void PriceTimePriorityStrategy::matchBuyAgainstBucket(Order& buyOrder, SellBucket& bucket, OrderMap& orders) {
-	while (!bucket.queue.empty()
+	while (!bucket.empty()
 		&& buyOrder.fulfilled != FULLY_FULFILLED
 		&& buyOrder.fulfilled != CANCELLED)
 	{
-		Order& sellOrder = orders.at(bucket.queue.top());
-		if (sellOrder.fulfilled == FULLY_FULFILLED || sellOrder.fulfilled == CANCELLED) {
-			bucket.queue.pop();
-			continue;
-		}
+		const std::string id = bucket.top().id;
+		Order& sellOrder = orders.at(id);
 
 		if (compareDoubles(buyOrder.price, sellOrder.price) < 0) break;
 
@@ -36,21 +33,20 @@ void PriceTimePriorityStrategy::matchBuyAgainstBucket(Order& buyOrder, SellBucke
 		buyOrder.fulfilled  = compareDoubles(buyOrder.quantity,  0.0) == 0 ? FULLY_FULFILLED : PARTIALLY_FULFILLED;
 		sellOrder.fulfilled = compareDoubles(sellOrder.quantity, 0.0) == 0 ? FULLY_FULFILLED : PARTIALLY_FULFILLED;
 
-		if (sellOrder.fulfilled == FULLY_FULFILLED)
-			bucket.queue.pop();
+		if (sellOrder.fulfilled == FULLY_FULFILLED) {
+			bucket.popTop();
+			orders.erase(id);
+		}
 	}
 }
 
 void PriceTimePriorityStrategy::matchSellAgainstBucket(Order& sellOrder, BuyBucket& bucket, OrderMap& orders) {
-	while (!bucket.queue.empty()
+	while (!bucket.empty()
 		&& sellOrder.fulfilled != FULLY_FULFILLED
 		&& sellOrder.fulfilled != CANCELLED)
 	{
-		Order& buyOrder = orders.at(bucket.queue.top());
-		if (buyOrder.fulfilled == FULLY_FULFILLED || buyOrder.fulfilled == CANCELLED) {
-			bucket.queue.pop();
-			continue;
-		}
+		const std::string id = bucket.top().id;
+		Order& buyOrder = orders.at(id);
 
 		if (compareDoubles(sellOrder.price, buyOrder.price) > 0) break;
 
@@ -63,8 +59,10 @@ void PriceTimePriorityStrategy::matchSellAgainstBucket(Order& sellOrder, BuyBuck
 		sellOrder.fulfilled = compareDoubles(sellOrder.quantity, 0.0) == 0 ? FULLY_FULFILLED : PARTIALLY_FULFILLED;
 		buyOrder.fulfilled  = compareDoubles(buyOrder.quantity,  0.0) == 0 ? FULLY_FULFILLED : PARTIALLY_FULFILLED;
 
-		if (buyOrder.fulfilled == FULLY_FULFILLED)
-			bucket.queue.pop();
+		if (buyOrder.fulfilled == FULLY_FULFILLED) {
+			bucket.popTop();
+			orders.erase(id);
+		}
 	}
 }
 

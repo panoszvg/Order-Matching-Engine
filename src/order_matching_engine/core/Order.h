@@ -22,6 +22,7 @@ enum Fulfilled {
 class Order {
 public:
 	Order(string security, OrderType type, double quantity, double price);
+	Order(string security, OrderType type, double quantity, double originalQuantity, double price);
 
 	string id;
 	string security;

@@ -36,7 +36,7 @@ TEST(Book, Insert_Invalid_Price_Negative) {
 
 TEST(Book, Insert_Invalid_Tick_Size) {
     auto book = makeBook("TST", 0.1, 0.5);
-    auto order = Order("TST", BUY, 10.0, 1.05); // 1.05 not aligned to 0.1
+    auto order = Order("TST", BUY, 10.0, 1.05);
     EXPECT_THROW(book->insertOrder(order), std::invalid_argument);
 }
 
@@ -62,6 +62,7 @@ TEST(Book, Insert_Duplicate_Id_Throws) {
 }
 
 // ── Matching ─────────────────────────────────────────────────────────────────
+// Fully-filled orders are erased from allOrders. count(id)==0 means done.
 
 TEST(Book, Match_Full_Buy_Against_Resting_Sell) {
     auto book = makeBook();
@@ -70,10 +71,10 @@ TEST(Book, Match_Full_Buy_Against_Resting_Sell) {
     book->insertOrder(sell);
     book->insertOrder(buy);
 
-    EXPECT_EQ(book->getOrders().at(sell.id).fulfilled, FULLY_FULFILLED);
-    EXPECT_EQ(book->getOrders().at(buy.id).fulfilled,  FULLY_FULFILLED);
-    EXPECT_TRUE(book->getSellOrders().queue.empty());
-    EXPECT_TRUE(book->getBuyOrders().queue.empty());
+    EXPECT_EQ(book->getOrders().count(sell.id), 0u);
+    EXPECT_EQ(book->getOrders().count(buy.id),  0u);
+    EXPECT_TRUE(book->getSellOrders().empty());
+    EXPECT_TRUE(book->getBuyOrders().empty());
 }
 
 TEST(Book, Match_Full_Sell_Against_Resting_Buy) {
@@ -83,8 +84,8 @@ TEST(Book, Match_Full_Sell_Against_Resting_Buy) {
     book->insertOrder(buy);
     book->insertOrder(sell);
 
-    EXPECT_EQ(book->getOrders().at(buy.id).fulfilled,  FULLY_FULFILLED);
-    EXPECT_EQ(book->getOrders().at(sell.id).fulfilled, FULLY_FULFILLED);
+    EXPECT_EQ(book->getOrders().count(buy.id),  0u);
+    EXPECT_EQ(book->getOrders().count(sell.id), 0u);
 }
 
 TEST(Book, NoMatch_Buy_Price_Below_Ask) {
@@ -118,7 +119,9 @@ TEST(Book, PartialFill_Buy_Less_Than_Sell) {
     book->insertOrder(sell);
     book->insertOrder(buy);
 
-    EXPECT_EQ(book->getOrders().at(buy.id).fulfilled,  FULLY_FULFILLED);
+    // buy fully filled → erased
+    EXPECT_EQ(book->getOrders().count(buy.id), 0u);
+    // sell partially filled → still in book
     EXPECT_EQ(book->getOrders().at(sell.id).fulfilled, PARTIALLY_FULFILLED);
     EXPECT_DOUBLE_EQ(book->getOrders().at(sell.id).quantity, 7.0);
     EXPECT_DOUBLE_EQ(book->getSellOrders().total_quantity, 7.0);
@@ -131,8 +134,10 @@ TEST(Book, PartialFill_Buy_More_Than_Sell) {
     book->insertOrder(sell);
     book->insertOrder(buy);
 
-    EXPECT_EQ(book->getOrders().at(sell.id).fulfilled, FULLY_FULFILLED);
-    EXPECT_EQ(book->getOrders().at(buy.id).fulfilled,  PARTIALLY_FULFILLED);
+    // sell fully filled (resting) → erased
+    EXPECT_EQ(book->getOrders().count(sell.id), 0u);
+    // buy partially filled → still in book
+    EXPECT_EQ(book->getOrders().at(buy.id).fulfilled, PARTIALLY_FULFILLED);
     EXPECT_DOUBLE_EQ(book->getOrders().at(buy.id).quantity, 7.0);
     EXPECT_DOUBLE_EQ(book->getBuyOrders().total_quantity, 7.0);
 }
@@ -151,9 +156,9 @@ TEST(Book, Match_Buy_Consumes_Multiple_Sells) {
     auto buy = Order("TST", BUY, 7.0, 100.0);
     book->insertOrder(buy);
 
-    EXPECT_EQ(book->getOrders().at(sell1.id).fulfilled, FULLY_FULFILLED);
-    EXPECT_EQ(book->getOrders().at(sell2.id).fulfilled, FULLY_FULFILLED);
-    EXPECT_EQ(book->getOrders().at(buy.id).fulfilled,   FULLY_FULFILLED);
+    EXPECT_EQ(book->getOrders().count(sell1.id), 0u);
+    EXPECT_EQ(book->getOrders().count(sell2.id), 0u);
+    EXPECT_EQ(book->getOrders().count(buy.id),   0u);
 }
 
 TEST(Book, Match_Price_Priority_CheapestSellFirst) {
@@ -166,9 +171,9 @@ TEST(Book, Match_Price_Priority_CheapestSellFirst) {
     auto buy = Order("TST", BUY, 5.0, 102.0);
     book->insertOrder(buy);
 
-    EXPECT_EQ(book->getOrders().at(cheap.id).fulfilled,     FULLY_FULFILLED);
+    EXPECT_EQ(book->getOrders().count(cheap.id), 0u);  // matched and erased
     EXPECT_EQ(book->getOrders().at(expensive.id).fulfilled, NOT_FULFILLED);
-    EXPECT_EQ(book->getOrders().at(buy.id).fulfilled,       FULLY_FULFILLED);
+    EXPECT_EQ(book->getOrders().count(buy.id), 0u);     // matched and erased
 }
 
 TEST(Book, Match_Price_Priority_HighestBidFirst) {
@@ -181,20 +186,21 @@ TEST(Book, Match_Price_Priority_HighestBidFirst) {
     auto sell = Order("TST", SELL, 5.0, 100.0);
     book->insertOrder(sell);
 
-    EXPECT_EQ(book->getOrders().at(high_bid.id).fulfilled, FULLY_FULFILLED);
-    EXPECT_EQ(book->getOrders().at(low_bid.id).fulfilled,  NOT_FULFILLED);
-    EXPECT_EQ(book->getOrders().at(sell.id).fulfilled,     FULLY_FULFILLED);
+    EXPECT_EQ(book->getOrders().count(high_bid.id), 0u);  // matched and erased
+    EXPECT_EQ(book->getOrders().at(low_bid.id).fulfilled, NOT_FULFILLED);
+    EXPECT_EQ(book->getOrders().count(sell.id), 0u);       // matched and erased
 }
 
 // ── Cancellation ─────────────────────────────────────────────────────────────
 
-TEST(Book, Cancel_MarksOrderCancelled) {
+TEST(Book, Cancel_RemovesOrderFromBook) {
     auto book = makeBook();
     auto order = Order("TST", BUY, 5.0, 100.0);
     book->insertOrder(order);
     book->cancelOrder(order.id);
 
-    EXPECT_EQ(book->orderLookup(order.id).fulfilled, CANCELLED);
+    // Cancelled orders are erased from allOrders
+    EXPECT_EQ(book->getOrders().count(order.id), 0u);
 }
 
 TEST(Book, Cancel_ReducesTotalQuantity) {
@@ -212,24 +218,24 @@ TEST(Book, Cancel_NonExistent_Throws) {
     EXPECT_THROW(book->cancelOrder("does-not-exist"), std::invalid_argument);
 }
 
-TEST(Book, Cancel_AlreadyCancelled_IsNoOp) {
+TEST(Book, Cancel_AlreadyCancelled_Throws) {
     auto book = makeBook();
     auto order = Order("TST", BUY, 5.0, 100.0);
     book->insertOrder(order);
     book->cancelOrder(order.id);
-    EXPECT_NO_THROW(book->cancelOrder(order.id));
+    // Order was erased — second cancel throws
+    EXPECT_THROW(book->cancelOrder(order.id), std::invalid_argument);
 }
 
-TEST(Book, Cancel_FullyFulfilled_IsNoOp) {
+TEST(Book, Cancel_FullyFilled_Throws) {
     auto book = makeBook();
     auto sell = Order("TST", SELL, 5.0, 100.0);
     auto buy  = Order("TST", BUY,  5.0, 100.0);
     book->insertOrder(sell);
     book->insertOrder(buy);
 
-    EXPECT_EQ(book->getOrders().at(buy.id).fulfilled, FULLY_FULFILLED);
-    EXPECT_NO_THROW(book->cancelOrder(buy.id));
-    EXPECT_EQ(book->getOrders().at(buy.id).fulfilled, FULLY_FULFILLED);
+    // Both erased — cancel throws
+    EXPECT_THROW(book->cancelOrder(buy.id), std::invalid_argument);
 }
 
 // ── Modification ─────────────────────────────────────────────────────────────
@@ -241,9 +247,9 @@ TEST(Book, Modify_UpdatesRestingOrder) {
 
     EXPECT_NO_THROW(book->modifyOrder(sell.id, 10.0, 101.0));
 
-    // Original order should be cancelled
-    EXPECT_EQ(book->orderLookup(sell.id).fulfilled, CANCELLED);
-    // A new sell with the updated price should now hold the book quantity
+    // Original order was cancelled → erased from allOrders
+    EXPECT_EQ(book->getOrders().count(sell.id), 0u);
+    // A new sell with updated price holds the book quantity
     EXPECT_NEAR(book->getSellOrders().total_quantity, 10.0, 1e-9);
 }
 
@@ -257,7 +263,6 @@ TEST(Book, Modify_NewQtyBelowFilledQty_Throws) {
     auto sell = Order("TST", SELL, 10.0, 100.0);
     book->insertOrder(sell);
 
-    // Partially fill: buy 3 units
     auto buy = Order("TST", BUY, 3.0, 100.0);
     book->insertOrder(buy);
     // sell has 7 remaining, 3 filled — newQty=2 is below filledQty=3
@@ -328,7 +333,7 @@ TEST(Book, ToJson_PartiallyFilledOrderIncluded) {
 
     auto buy = Order("TST", BUY, 3.0, 100.0);
     book->insertOrder(buy);
-    // sell partially filled: 7 remaining
+
     json j = book->toJson();
 
     EXPECT_TRUE(j["bids"].empty());

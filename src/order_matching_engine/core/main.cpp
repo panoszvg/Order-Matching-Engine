@@ -56,7 +56,7 @@ int main(int argc, char* argv[]) {
 	}
 
 	string line = "";
-	vector<string> lines;
+	std::vector<string> lines;
 	std::ifstream file("input_files/FIX_Messages.csv");
 
 	while (getline(file, line)) {

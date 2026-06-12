@@ -3,24 +3,23 @@
 #include <string>
 
 Book::Book(unique_ptr<IOrderMatchingStrategy> matcher, unique_ptr<Security> security) :
-	matcher(std::move(matcher)), security(std::move(security)),
-	buyOrders(CompareBuy(allOrders)), sellOrders(CompareSell(allOrders)) {}
+	matcher(std::move(matcher)), security(std::move(security)) {}
 
 void Book::insertOrderUnlocked(Order& order) {
 	double orderSecurityTick = security->getTickSize();
-	
+
 	if (compareDoubles(order.price, 0.0) <= 0) {
 		ostringstream oss;
 		oss << "Price (" << order.price << ") must be greater than zero";
 		throw invalid_argument(oss.str());
 	}
-	
+
 	if (compareDoubles(order.quantity, 0.0) <= 0) {
 		ostringstream oss;
 		oss << "Quantity (" << order.quantity << ") must be greater than zero";
 		throw invalid_argument(oss.str());
 	}
-	
+
 	if (!isPriceTickAligned(order.price, orderSecurityTick)) {
 		ostringstream oss;
 		oss << "Order price (" << order.price << ") does not align with tick size (" << orderSecurityTick << ")";
@@ -35,67 +34,68 @@ void Book::insertOrderUnlocked(Order& order) {
 
 	matcher->matchOrder(stored, *this);
 
-	if (stored.fulfilled != FULLY_FULFILLED && stored.fulfilled != CANCELLED) {
-		if (stored.type == BUY) {
-			buyOrders.queue.push(stored.id);
-			buyOrders.total_quantity += stored.quantity;
-		} else {
-			sellOrders.queue.push(stored.id);
-			sellOrders.total_quantity += stored.quantity;
-		}
+	if (stored.fulfilled == FULLY_FULFILLED || stored.fulfilled == CANCELLED) {
+		allOrders.erase(order.id);
+	} else if (stored.type == BUY) {
+		buyOrders.push(BuyEntry{stored.price, stored.getMicroTimestamp(), stored.id});
+		buyOrders.total_quantity += stored.quantity;
+	} else {
+		sellOrders.push(SellEntry{stored.price, stored.getMicroTimestamp(), stored.id});
+		sellOrders.total_quantity += stored.quantity;
 	}
 }
 
 void Book::cancelOrderUnlocked(const string& orderId) {
-	try {
-		auto& order = orderLookupUnlocked(orderId);
-
-		if (order.fulfilled == CANCELLED || order.fulfilled == FULLY_FULFILLED) {
-			return;
-		}
-
-		if (order.type == BUY) {
-			if (order.quantity > 0)
-				buyOrders.total_quantity -= order.quantity;
-		} else {
-			if (order.quantity > 0)
-				sellOrders.total_quantity -= order.quantity;
-		}
-		
-		order.fulfilled = CANCELLED;
-	} catch (const std::out_of_range&) {
+	auto it = allOrders.find(orderId);
+	if (it == allOrders.end())
 		throw invalid_argument("Cancel failed: order " + orderId + " does not exist");
+
+	Order& order = it->second;
+	if (order.fulfilled == CANCELLED || order.fulfilled == FULLY_FULFILLED)
+		return;
+
+	if (order.type == BUY) {
+		buyOrders.total_quantity -= order.quantity;
+		buyOrders.erase(orderId);
+	} else {
+		sellOrders.total_quantity -= order.quantity;
+		sellOrders.erase(orderId);
 	}
+
+	allOrders.erase(it);
 }
 
 Order& Book::orderLookupUnlocked(const std::string& orderId) {
-    return allOrders.at(orderId);
+	return allOrders.at(orderId);
 }
 
 void Book::modifyOrder(const string& orderId, double newQty, double newPrice) {
 	std::lock_guard<std::mutex> lock(bookMutex);
 	try {
 		auto& order = orderLookupUnlocked(orderId);
-		
+
 		double filledQty = order.originalQuantity - order.quantity;
 		if (compareDoubles(newQty, filledQty) <= 0) {
 			ostringstream oss;
 			oss << "New quantity (" << newQty << ") must be greater than already filled quantity (" << filledQty << ")";
 			throw invalid_argument(oss.str());
 		}
-		
+
+		std::string sec  = order.security;
+		OrderType type = order.type;
+
 		cancelOrderUnlocked(orderId);
-		auto modifiedOrder = std::make_unique<Order>(order.security, order.type, newQty - filledQty, newPrice);
-		modifiedOrder->originalQuantity = newQty;
-		
+
+		auto modifiedOrder = std::make_unique<Order>(sec, type, newQty - filledQty, newQty, newPrice);
+
 		try {
 			insertOrderUnlocked(*modifiedOrder);
 		} catch (const invalid_argument& arg) {
 			logger->error("Order rejected: {}", arg.what());
 			throw;
 		}
-		
-	} catch (const std::out_of_range &e) {
+
+	} catch (const std::out_of_range& e) {
 		logger->error("Order {} doesn't exist", orderId);
 		throw;
 	}
@@ -120,8 +120,8 @@ void Book::setSecurity(std::unique_ptr<Security> sec) {
 }
 
 Order& Book::orderLookup(const std::string& orderId) {
-    std::lock_guard<std::mutex> lock(bookMutex);
-    return orderLookupUnlocked(orderId);
+	std::lock_guard<std::mutex> lock(bookMutex);
+	return orderLookupUnlocked(orderId);
 }
 
 Security& Book::getSecurity() {
@@ -141,66 +141,52 @@ SellBucket& Book::getSellOrders() {
 }
 
 void Book::printBuyOrders() {
-	if (buyOrders.queue.empty()) {
+	if (buyOrders.empty()) {
 		logger->info("# No Buy Orders");
 		return;
 	}
 	logger->info("# Buy Orders");
 	logger->info("=============");
 	logger->info("  total_quantity: {:.6}", buyOrders.total_quantity);
-	auto tempQueue = buyOrders.queue;
-	while (!tempQueue.empty()) {
-		const auto& order = allOrders.at(tempQueue.top());
-		tempQueue.pop();
-		if (order.fulfilled == FULLY_FULFILLED || order.fulfilled == CANCELLED)
-			continue;
-		order.print();
+	for (const auto& entry : buyOrders.queue) {
+		allOrders.at(entry.id).print();
 	}
 }
 
 void Book::printBuyOrdersFromAll() {
-	if (buyOrders.queue.empty()) {
+	if (buyOrders.empty()) {
 		logger->info("# No Buy Orders");
 		return;
 	}
 	logger->info("# Buy Orders");
 	logger->info("=============");
-	for (auto& [securityString, order] : allOrders) {
-		if (order.type == BUY && (order.fulfilled == NOT_FULFILLED || order.fulfilled == PARTIALLY_FULFILLED)) {
-			order.print();
-		}
+	for (auto& [id, order] : allOrders) {
+		if (order.type == BUY) order.print();
 	}
 }
 
 void Book::printSellOrders() {
-	if (sellOrders.queue.empty()) {
+	if (sellOrders.empty()) {
 		logger->info("# No Sell Orders");
 		return;
 	}
 	logger->info("# Sell Orders");
 	logger->info("=============");
 	logger->info("  total_quantity: {:.6}", sellOrders.total_quantity);
-	auto tempQueue = sellOrders.queue;
-	while (!tempQueue.empty()) {
-		const auto& order = allOrders.at(tempQueue.top());
-		tempQueue.pop();
-		if (order.fulfilled == FULLY_FULFILLED || order.fulfilled == CANCELLED)
-			continue;
-		order.print();
+	for (const auto& entry : sellOrders.queue) {
+		allOrders.at(entry.id).print();
 	}
 }
 
 void Book::printSellOrdersFromAll() {
-	if (sellOrders.queue.empty()) {
-		logger->info("No Sell Orders");
+	if (sellOrders.empty()) {
+		logger->info("# No Sell Orders");
 		return;
 	}
 	logger->info("# Sell Orders");
 	logger->info("=============");
-	for (auto& [securityString, order] : allOrders) {
-		if (order.type == SELL && (order.fulfilled == NOT_FULFILLED || order.fulfilled == PARTIALLY_FULFILLED)) {
-			order.print();
-		}
+	for (auto& [id, order] : allOrders) {
+		if (order.type == SELL) order.print();
 	}
 }
 
@@ -226,33 +212,21 @@ json Book::toJson() const {
 	double roundSize = round(1.0 / security->getTickSize());
 
 	j["bids"] = json::array();
-	if (!buyOrders.queue.empty()) {
-		auto tempQueue = buyOrders.queue;
-		while (!tempQueue.empty()) {
-			const Order& o = allOrders.at(tempQueue.top());
-			tempQueue.pop();
-			if (o.fulfilled == FULLY_FULFILLED || o.fulfilled == CANCELLED)
-				continue;
-			j["bids"].push_back({
-				{"price",    round(o.price    * roundSize) / roundSize},
-				{"quantity", round(o.quantity * roundSize) / roundSize}
-			});
-		}
+	for (const auto& entry : buyOrders.queue) {
+		const Order& o = allOrders.at(entry.id);
+		j["bids"].push_back({
+			{"price",    round(o.price    * roundSize) / roundSize},
+			{"quantity", round(o.quantity * roundSize) / roundSize}
+		});
 	}
 
 	j["asks"] = json::array();
-	if (!sellOrders.queue.empty()) {
-		auto tempQueue = sellOrders.queue;
-		while (!tempQueue.empty()) {
-			const Order& o = allOrders.at(tempQueue.top());
-			tempQueue.pop();
-			if (o.fulfilled == FULLY_FULFILLED || o.fulfilled == CANCELLED)
-				continue;
-			j["asks"].push_back({
-				{"price",    round(o.price    * roundSize) / roundSize},
-				{"quantity", round(o.quantity * roundSize) / roundSize}
-			});
-		}
+	for (const auto& entry : sellOrders.queue) {
+		const Order& o = allOrders.at(entry.id);
+		j["asks"].push_back({
+			{"price",    round(o.price    * roundSize) / roundSize},
+			{"quantity", round(o.quantity * roundSize) / roundSize}
+		});
 	}
 
 	return j;

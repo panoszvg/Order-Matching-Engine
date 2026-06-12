@@ -8,6 +8,9 @@
 Order::Order(string security, OrderType type, double quantity, double price)
     : id(generateUUID()), security(std::move(security)), type(type), originalQuantity(quantity), quantity(quantity), price(price), fulfilled(NOT_FULFILLED) {}
 
+Order::Order(string security, OrderType type, double quantity, double originalQuantity, double price)
+    : id(generateUUID()), security(std::move(security)), type(type), originalQuantity(originalQuantity), quantity(quantity), price(price), fulfilled(NOT_FULFILLED) {}
+
 static std::random_device              rd;
 static std::mt19937                    gen(rd());
 static std::uniform_int_distribution<> dis(0, 15);

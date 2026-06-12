@@ -4,43 +4,66 @@
 #pragma once
 
 #include "core/Order.h"
-#include <queue>
+#include <set>
 #include <string>
-#include <vector>
 #include <unordered_map>
 
 using OrderMap = std::unordered_map<std::string, Order>;
 
-struct CompareBuy {
-	const OrderMap& orders;
-	explicit CompareBuy(const OrderMap& orders) : orders(orders) {}
-	bool operator()(const std::string& a, const std::string& b) const {
-		const Order& oa = orders.at(a);
-		const Order& ob = orders.at(b);
-		if (oa.price == ob.price) return oa.timestamp > ob.timestamp;
-		return oa.price < ob.price;
+struct BuyEntry {
+	double   price;
+	int64_t  timestamp;
+	std::string id;
+
+	bool operator<(const BuyEntry& o) const {
+		if (price     != o.price)     return price > o.price;         // higher price first
+		if (timestamp != o.timestamp) return timestamp < o.timestamp; // earlier first
+		return id < o.id;
 	}
 };
 
-struct CompareSell {
-	const OrderMap& orders;
-	explicit CompareSell(const OrderMap& orders) : orders(orders) {}
-	bool operator()(const std::string& a, const std::string& b) const {
-		const Order& oa = orders.at(a);
-		const Order& ob = orders.at(b);
-		if (oa.price == ob.price) return oa.timestamp > ob.timestamp;
-		return oa.price > ob.price;
+struct SellEntry {
+	double   price;
+	int64_t  timestamp;
+	std::string id;
+
+	bool operator<(const SellEntry& o) const {
+		if (price     != o.price)     return price < o.price;         // lower price first
+		if (timestamp != o.timestamp) return timestamp < o.timestamp; // earlier first
+		return id < o.id;
 	}
 };
 
-template<typename Compare>
+template<typename Entry>
 struct Bucket {
-	std::priority_queue<std::string, std::vector<std::string>, Compare> queue;
+	std::set<Entry> queue;
+	std::unordered_map<std::string, typename std::set<Entry>::iterator> index;
 	double total_quantity = 0;
-	explicit Bucket(Compare cmp) : queue(std::move(cmp)) {}
+
+	void push(const Entry& e) {
+		auto [it, ok] = queue.insert(e);
+		if (ok) index.emplace(e.id, it);
+	}
+
+	void erase(const std::string& id) {
+		auto it = index.find(id);
+		if (it != index.end()) {
+			queue.erase(it->second);
+			index.erase(it);
+		}
+	}
+
+	void popTop() {
+		auto top = queue.begin();
+		index.erase(top->id);
+		queue.erase(top);
+	}
+
+	bool empty() const { return queue.empty(); }
+	const Entry& top() const { return *queue.begin(); }
 };
 
-using BuyBucket  = Bucket<CompareBuy>;
-using SellBucket = Bucket<CompareSell>;
+using BuyBucket  = Bucket<BuyEntry>;
+using SellBucket = Bucket<SellEntry>;
 
 #endif // BUCKETS_H
