@@ -14,7 +14,6 @@
 #include <unordered_map>
 #include <nlohmann/json.hpp>
 
-using std::shared_ptr;
 using std::unique_ptr;
 using std::ostringstream;
 using std::unordered_map;
@@ -28,14 +27,14 @@ private:
 	unordered_map<string, Order> allOrders;
 	BuyBucket  buyOrders;
 	SellBucket sellOrders;
-	shared_ptr<IOrderMatchingStrategy> matcher;
+	unique_ptr<IOrderMatchingStrategy> matcher;
 	unique_ptr<Security> security;
 	void insertOrderUnlocked(Order& order);
 	void cancelOrderUnlocked(const std::string& orderId);
 	Order& orderLookupUnlocked(const std::string& orderId);
 
 public:
-	explicit Book(shared_ptr<IOrderMatchingStrategy> matcher, unique_ptr<Security> security);
+	explicit Book(unique_ptr<IOrderMatchingStrategy> matcher, unique_ptr<Security> security);
 
 	void insertOrder(Order& order);
 	void cancelOrder(const string& orderId);

@@ -4,8 +4,6 @@
 #include "Order.h"
 #include <memory>
 
-using std::shared_ptr;
-
 constexpr char SOH = '\x01';
 
 class IMessage {

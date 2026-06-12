@@ -12,8 +12,6 @@
 #include <unordered_map>
 
 using std::string;
-using std::shared_ptr;
-using std::make_shared;
 
 enum PARSER_MODE { SIMPLE_MESSAGE, FIX_MESSAGE };
 
@@ -23,7 +21,7 @@ private:
 
 public:
 	Parser(PARSER_MODE parserMode = SIMPLE_MESSAGE);
-	shared_ptr<IMessage> parse(const string& message);
+	std::unique_ptr<IMessage> parse(const string& message);
 
 };
 

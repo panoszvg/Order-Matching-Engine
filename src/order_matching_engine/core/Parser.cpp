@@ -2,16 +2,16 @@
 
 Parser::Parser(PARSER_MODE parserMode) : parserMode(parserMode) {}
 
-shared_ptr<IMessage> Parser::parse(const string& message) {
-	shared_ptr<IMessage> newMessage;
+std::unique_ptr<IMessage> Parser::parse(const string& message) {
+	std::unique_ptr<IMessage> newMessage;
 
 	switch (parserMode) {
 	case FIX_MESSAGE:
-		newMessage = make_shared<FixMessage>();
+		newMessage = std::make_unique<FixMessage>();
 		break;
 	case SIMPLE_MESSAGE:
 	default:
-		newMessage = make_shared<SimpleMessage>();
+		newMessage = std::make_unique<SimpleMessage>();
 		break;
 	}
 

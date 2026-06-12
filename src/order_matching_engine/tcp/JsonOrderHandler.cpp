@@ -1,6 +1,6 @@
 #include "JsonOrderHandler.h"
 
-JsonOrderHandler::JsonOrderHandler(std::unordered_map<std::string, std::shared_ptr<Book>>& books)
+JsonOrderHandler::JsonOrderHandler(std::unordered_map<std::string, std::unique_ptr<Book>>& books)
 	: books_(books) {}
 
 void JsonOrderHandler::handle(const std::string& rawMessage, TcpSession& session) {

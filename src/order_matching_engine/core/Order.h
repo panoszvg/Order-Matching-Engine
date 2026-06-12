@@ -1,15 +1,11 @@
 #ifndef ORDER_H
 #define ORDER_H
 
-#include <queue>
 #include <chrono>
-#include <memory>
 #include <string>
 #include <cstdint>
 
-using std::queue;
 using std::string;
-using std::shared_ptr;
 
 enum OrderType {
 	BUY,

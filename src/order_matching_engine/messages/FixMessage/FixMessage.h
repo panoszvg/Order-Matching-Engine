@@ -6,27 +6,21 @@
 #include "Logger.h"
 #include "messages/IMessage.h"
 #include "FixMap.h"
-#include <map>
-#include <memory>
 #include <string>
 
-using std::map;
 using std::string;
-using std::shared_ptr;
-
 
 class FixMessage : public IMessage {
 private:
-	shared_ptr<FixMap> header;
-	shared_ptr<FixMap> body;
-	shared_ptr<FixMap> trailer;
+	FixMap header;
+	FixMap body;
+	FixMap trailer;
 
 public:
-	FixMessage();
 	void populate(const string& message) override;
 	void isValid() override;
 	Order makeOrder() override;
-	string getValue(int tag);
+	string getValue(int tag) const;
 
 	void print();
 };

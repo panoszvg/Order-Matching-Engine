@@ -23,14 +23,16 @@ int main(int argc, char* argv[]) {
 	logger->info("PROGRAM START");
 	logger->info("");
 
-	std::unordered_map<string, shared_ptr<Book>> books;
-	
+	std::unordered_map<string, std::unique_ptr<Book>> books;
+
 	try {
 		SecurityProvider provider("input_files/securities.csv");
 		auto securities = provider.loadSecurities();
-		auto strategy = std::make_shared<PriceTimePriorityStrategy>();
 		for (auto& [securityStr, security] : securities) {
-			books[securityStr] = std::make_shared<Book>(strategy, std::move(security));
+			books[securityStr] = std::make_unique<Book>(
+				std::make_unique<PriceTimePriorityStrategy>(),
+				std::move(security)
+			);
 		}
 	} catch(std::exception &e) {
 		logger->error("Securities couldn't be read: {}", e.what());
@@ -62,10 +64,10 @@ int main(int argc, char* argv[]) {
 	}
 	file.close();
 
-	shared_ptr<Parser> parser = std::make_shared<Parser>();
+	Parser parser;
 
 	for (auto& line : lines) {
-		auto newMessage = parser->parse(line);
+		auto newMessage = parser.parse(line);
 		auto newOrder = newMessage->makeOrder();
 		try {
 			books[newOrder.security]->insertOrder(newOrder);

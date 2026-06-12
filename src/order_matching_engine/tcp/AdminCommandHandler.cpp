@@ -1,6 +1,6 @@
 #include "AdminCommandHandler.h"
 
-AdminCommandHandler::AdminCommandHandler(std::unordered_map<std::string, std::shared_ptr<Book>>& books)
+AdminCommandHandler::AdminCommandHandler(std::unordered_map<std::string, std::unique_ptr<Book>>& books)
 	: books_(books) {}
 
 void AdminCommandHandler::handle(const std::string& rawMessage, TcpSession& session) {
@@ -11,21 +11,18 @@ void AdminCommandHandler::handle(const std::string& rawMessage, TcpSession& sess
 		if (type == "GET_SNAPSHOT") {
 			try {
 				std::string symbol = json["symbol"];
-				auto book = books_[symbol];
-				if (book) {
-					nlohmann::json bookJson = book->toJson();
-
+				auto it = books_.find(symbol);
+				if (it == books_.end()) {
+					session.send(R"({"status":"error","message":"Unknown symbol"})");
+				} else {
 					nlohmann::json response = {
 						{"status", "ok"},
-						{"message", "Exported snapshot for " + symbol},
+						{"message", "Snapshot for " + symbol},
 						{"symbol", symbol},
-						{"book", bookJson}
+						{"book", it->second->toJson()}
 					};
-
 					session.send(response.dump());
 					logger->info("Book was exported and returned");
-				} else {
-					session.send(R"({"status":"error","message":"Unknown symbol"})");
 				}
 			} catch (const std::exception& e) {
 				session.send(std::string(R"({"status":"error","message":"Exception: )") + e.what() + R"("})");
@@ -35,13 +32,13 @@ void AdminCommandHandler::handle(const std::string& rawMessage, TcpSession& sess
 		else if (type == "EXPORT_SNAPSHOT") {
 			try {
 				std::string symbol = json["symbol"];
-				auto book = books_[symbol];
-				if (book) {
-					book->exportSnapshot();
+				auto it = books_.find(symbol);
+				if (it == books_.end()) {
+					session.send(R"({"status":"error","message":"Unknown symbol"})");
+				} else {
+					it->second->exportSnapshot();
 					session.send(R"({"status":"ok","message":"Exported snapshot for )" + symbol + R"("})");
 					logger->info("Book was exported");
-				} else {
-					session.send(R"({"status":"error","message":"Unknown symbol"})");
 				}
 			} catch (const std::exception& e) {
 				session.send(std::string(R"({"status":"error","message":"Exception: )") + e.what() + R"("})");

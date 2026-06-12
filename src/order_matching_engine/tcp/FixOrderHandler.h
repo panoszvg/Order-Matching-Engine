@@ -11,10 +11,10 @@
 
 class FixOrderHandler : public IMessageHandler {
 private:
-    std::unordered_map<std::string, std::shared_ptr<Book>>& books_;
+    std::unordered_map<std::string, std::unique_ptr<Book>>& books_;
 
 public:
-    explicit FixOrderHandler(std::unordered_map<std::string, std::shared_ptr<Book>>& books);
+    explicit FixOrderHandler(std::unordered_map<std::string, std::unique_ptr<Book>>& books);
 
     void handle(const std::string& rawMessage, TcpSession& session) override;
 };

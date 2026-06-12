@@ -2,7 +2,7 @@ MAKEFLAGS += -j4
 
 CXX = g++
 CXXFLAGS = -std=c++17 -pthread
-INCLUDES = -I./ -I./core
+INCLUDES = -I./ -I./core -I./tests
 
 UNAME_S := $(shell uname -s)
 
@@ -23,14 +23,16 @@ SRC_CODE = 	$(filter-out core/main.cpp, $(wildcard core/*.cpp)) \
 			$(wildcard messages/SimpleMessage/*.cpp) \
 			$(wildcard benchmark/*.cpp)
 SRC_MAIN = core/main.cpp
-SRC_TEST = $(wildcard test/*.cpp)
+SRC_TEST = $(wildcard tests/core/*.cpp) \
+           $(wildcard tests/strategy/*.cpp) \
+           $(wildcard tests/messages/*.cpp)
 
 OBJ_CODE = $(SRC_CODE:.cpp=.o)
 OBJ_MAIN = $(SRC_MAIN:.cpp=.o) $(SRC_CODE:.cpp=.o)
 OBJ_TEST = $(SRC_TEST:.cpp=.o) $(SRC_CODE:.cpp=.o)
 
 TARGET_MAIN = order_matching_engine
-TARGET_TEST = test/run_tests
+TARGET_TEST = tests/run_tests
 
 .PHONY: all test clean
 
@@ -43,6 +45,7 @@ $(TARGET_MAIN): $(OBJ_MAIN)
 	$(CXX) $(CXXFLAGS) $(INCLUDES) -c $< -o $@
 
 test: $(TARGET_TEST)
+	./$(TARGET_TEST)
 
 $(TARGET_TEST): $(OBJ_TEST)
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(LIBS_TEST)

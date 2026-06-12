@@ -1,10 +1,9 @@
 #include "FixMap.h"
 
 void FixMap::addField(const int fieldTag, const string& input) {
-	auto newField = make_shared<FixField>(input, fieldTag);
-	fields.emplace(fieldTag, newField);
+	fields.emplace(fieldTag, FixField(input));
 }
 
-map<int, shared_ptr<FixField>> FixMap::getFields() {
+const map<int, FixField>& FixMap::getFields() const {
 	return fields;
 }

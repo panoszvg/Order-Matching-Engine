@@ -2,7 +2,7 @@
 #include "strategy/PriceTimePriorityStrategy.h"
 #include <string>
 
-Book::Book(std::shared_ptr<IOrderMatchingStrategy> matcher, unique_ptr<Security> security) :
+Book::Book(unique_ptr<IOrderMatchingStrategy> matcher, unique_ptr<Security> security) :
 	matcher(std::move(matcher)), security(std::move(security)),
 	buyOrders(CompareBuy(allOrders)), sellOrders(CompareSell(allOrders)) {}
 
