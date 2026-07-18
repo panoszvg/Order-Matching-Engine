@@ -21,3 +21,19 @@ TEST(Security, SymbolIsCaseSensitive) {
     Security upper("ADA", 0.001, 0.05);
     EXPECT_NE(lower.getSymbol(), upper.getSymbol());
 }
+
+TEST(Security, ZeroTickSizeThrows) {
+    EXPECT_THROW(Security("ETH", 0.0, 0.1), std::invalid_argument);
+}
+
+TEST(Security, NegativeTickSizeThrows) {
+    EXPECT_THROW(Security("ETH", -0.01, 0.1), std::invalid_argument);
+}
+
+TEST(Security, ZeroBucketSizeThrows) {
+    EXPECT_THROW(Security("ETH", 0.01, 0.0), std::invalid_argument);
+}
+
+TEST(Security, NegativeBucketSizeThrows) {
+    EXPECT_THROW(Security("ETH", 0.01, -0.1), std::invalid_argument);
+}

@@ -209,14 +209,14 @@ void Book::exportSnapshot() const {
 json Book::toJson() const {
 	json j;
 	j["symbol"] = security->getSymbol();
-	double roundSize = round(1.0 / security->getTickSize());
+	double tick = security->getTickSize();
 
 	j["bids"] = json::array();
 	for (const auto& entry : buyOrders.queue) {
 		const Order& o = allOrders.at(entry.id);
 		j["bids"].push_back({
-			{"price",    round(o.price    * roundSize) / roundSize},
-			{"quantity", round(o.quantity * roundSize) / roundSize}
+			{"price",    round(o.price / tick) * tick},
+			{"quantity", o.quantity}
 		});
 	}
 
@@ -224,8 +224,8 @@ json Book::toJson() const {
 	for (const auto& entry : sellOrders.queue) {
 		const Order& o = allOrders.at(entry.id);
 		j["asks"].push_back({
-			{"price",    round(o.price    * roundSize) / roundSize},
-			{"quantity", round(o.quantity * roundSize) / roundSize}
+			{"price",    round(o.price / tick) * tick},
+			{"quantity", o.quantity}
 		});
 	}
 

@@ -1,6 +1,7 @@
 #include "Book.h"
 #include "SecurityProvider.h"
 #include "strategy/PriceTimePriorityStrategy.h"
+#include "Logger.h"
 
 #include <string>
 #include <fstream>
@@ -24,7 +25,11 @@ std::unordered_map<string, std::unique_ptr<Security>> SecurityProvider::loadSecu
 		std::getline(ss, minQty, ',');
 		std::getline(ss, lotSize, ',');
 
-		securities[symbol] = std::make_unique<Security>(symbol, stod(minQty), stod(lotSize));
+		try {
+			securities[symbol] = std::make_unique<Security>(symbol, stod(minQty), stod(lotSize));
+		} catch (const std::exception& e) {
+			logger->error("Skipping security '{}': {}", symbol, e.what());
+		}
 	}
 
 	return securities;

@@ -19,7 +19,7 @@ inline int compareDoubles(double a, double b) {
 inline bool isPriceTickAligned(double price, double tick) {
 	double ratio = price / tick;
 	double rounded = std::round(ratio);
-	return std::fabs(ratio - rounded) < EPSILON;
+	return std::fabs(ratio - rounded) * tick < EPSILON;
 }
 
 #endif // MATH_H
