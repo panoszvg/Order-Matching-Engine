@@ -6,10 +6,10 @@
 #include <iomanip>
 
 Order::Order(string security, OrderType type, double quantity, double price)
-    : id(generateUUID()), security(std::move(security)), type(type), originalQuantity(quantity), quantity(quantity), price(price), fulfilled(NOT_FULFILLED) {}
+    : id(generateUUID()), security(std::move(security)), type(type), originalQuantity(quantity), quantity(quantity), price(price), fulfilled(NOT_FULFILLED), timestamp(std::chrono::system_clock::now()) {}
 
 Order::Order(string security, OrderType type, double quantity, double originalQuantity, double price)
-    : id(generateUUID()), security(std::move(security)), type(type), originalQuantity(originalQuantity), quantity(quantity), price(price), fulfilled(NOT_FULFILLED) {}
+    : id(generateUUID()), security(std::move(security)), type(type), originalQuantity(originalQuantity), quantity(quantity), price(price), fulfilled(NOT_FULFILLED), timestamp(std::chrono::system_clock::now()) {}
 
 static std::random_device              rd;
 static std::mt19937                    gen(rd());

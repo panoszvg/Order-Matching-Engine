@@ -68,10 +68,19 @@ TEST(Order, Construction_ManyOrdersHaveUniqueIds) {
     EXPECT_EQ(ids.size(), 1000u);
 }
 
-// Known bug: Order constructor does not initialise timestamp to now().
-// timestamp defaults to the system_clock epoch (microseconds = 0).
-// Fix: add timestamp(std::chrono::system_clock::now()) to the initialiser list.
-TEST(Order, Timestamp_DefaultsToEpoch) {
+TEST(Order, Timestamp_SetToCurrentTimeOnConstruction) {
+    auto before = std::chrono::duration_cast<std::chrono::microseconds>(
+        std::chrono::system_clock::now().time_since_epoch()).count();
     Order order("BTC", BUY, 10.0, 500.0);
-    EXPECT_EQ(order.getMicroTimestamp(), 0);
+    auto after = std::chrono::duration_cast<std::chrono::microseconds>(
+        std::chrono::system_clock::now().time_since_epoch()).count();
+
+    EXPECT_GE(order.getMicroTimestamp(), before);
+    EXPECT_LE(order.getMicroTimestamp(), after);
+}
+
+TEST(Order, Timestamp_LaterOrdersHaveLaterTimestamps) {
+    Order a("BTC", BUY, 10.0, 500.0);
+    Order b("BTC", BUY, 10.0, 500.0);
+    EXPECT_LE(a.getMicroTimestamp(), b.getMicroTimestamp());
 }
