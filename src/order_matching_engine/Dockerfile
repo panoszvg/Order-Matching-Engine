@@ -10,7 +10,7 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /app
 COPY . .
 WORKDIR /app
-RUN make
+RUN make clean && make
 
 # Stage 2: Runtime
 FROM debian:bullseye-slim AS runtime
