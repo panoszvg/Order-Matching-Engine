@@ -101,6 +101,18 @@ TEST(SimpleMessage, EmptyMessageBody_Throws) {
     EXPECT_THROW(msg.makeOrder(), std::invalid_argument);
 }
 
+TEST(SimpleMessage, InvalidNonNumericTag_IsSkipped) {
+    const std::string soh(1, SOH);
+    // "abc=garbage" has a non-numeric tag — should be silently skipped
+    std::string raw = "abc=garbage" + soh + buildMsg("BTC", 1, 5.0, 100.0);
+
+    SimpleMessage msg;
+    EXPECT_NO_THROW(msg.populate(raw));
+    // Core fields still parsed correctly
+    Order order = msg.makeOrder();
+    EXPECT_EQ(order.security, "BTC");
+}
+
 TEST(SimpleMessage, UnknownTagsAreIgnored) {
     const std::string soh(1, SOH);
     // tag 999 is not a known field — should be silently ignored

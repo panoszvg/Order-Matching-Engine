@@ -1,7 +1,6 @@
 #include "Book.h"
 #include "Order.h"
 #include "Logger.h"
-#include "Parser.h"
 #include "Security.h"
 #include "SecurityProvider.h"
 #include "benchmark/Benchmark.h"
@@ -12,10 +11,7 @@
 #include "tcp/AdminCommandHandler.h"
 #include <boost/asio/signal_set.hpp>
 #include <iostream>
-#include <fstream>
-#include <sstream>
 #include <string>
-#include <vector>
 
 int main(int argc, char* argv[]) {
 
@@ -55,33 +51,6 @@ int main(int argc, char* argv[]) {
 		}
 	}
 
-	string line = "";
-	std::vector<string> lines;
-	std::ifstream file("input_files/FIX_Messages.csv");
-
-	while (getline(file, line)) {
-		lines.push_back(line);
-	}
-	file.close();
-
-	Parser parser;
-
-	for (auto& line : lines) {
-		auto newMessage = parser.parse(line);
-		auto newOrder = newMessage->makeOrder();
-		try {
-			books[newOrder.security]->insertOrder(newOrder);
-		} catch (const std::invalid_argument& arg) {
-			logger->error("Order rejected: {}", arg.what());
-		}
-	}
-
-	for (auto& [security, book] : books) {
-		logger->info("{} Book after ending:", security);
-		book->printBuyOrders();
-		book->printSellOrders();
-	}
-	
 	boost::asio::io_context io_context;
 	
 	auto jsonHandler = std::make_shared<JsonOrderHandler>(books);

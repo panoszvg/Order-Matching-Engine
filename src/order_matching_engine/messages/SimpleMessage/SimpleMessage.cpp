@@ -1,4 +1,5 @@
 #include "SimpleMessage.h"
+#include "Logger.h"
 #include <string>
 #include <sstream>
 
@@ -11,9 +12,17 @@ void SimpleMessage::populate(const string& message) {
 	while (std::getline(ss, token, SOH)) {
 		auto equalPos = token.find('=');
 		if (equalPos != string::npos) {
-			int tag = stoi(token.substr(0, equalPos));
+			string tagStr = token.substr(0, equalPos);
 			string value = token.substr(equalPos + 1);
-			fields[tag] = value;
+
+			try {
+				int tag = stoi(tagStr);
+				fields[tag] = value;
+			} catch (const std::invalid_argument& e) {
+				logger->error("Invalid tag in Simple message field: '{}'. Skipping.", tagStr);
+			} catch (const std::out_of_range& e) {
+				logger->error("Out of range tag in Simple message field: '{}'. Skipping.", tagStr);
+			}
 		}
 	}
 }
