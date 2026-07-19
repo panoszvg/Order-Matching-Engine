@@ -16,6 +16,8 @@ def get_snapshot(symbol):
             sock.sendall(message.encode('utf-8'))
             response = json.loads(sock.recv(4096).decode('utf-8').strip())
             return jsonify(status="ok", response=response), 200
+    except OSError as e:
+        return jsonify(status="error", response=str(e)), 502
     except Exception as e:
         return jsonify(status="error", response=str(e)), 400
 
@@ -28,5 +30,7 @@ def export_snapshot():
             sock.sendall(message.encode('utf-8'))
             response = json.loads(sock.recv(1024).decode('utf-8').strip())
             return jsonify(status="ok", response=response), 200
+    except OSError as e:
+        return jsonify(status="error", response=str(e)), 502
     except Exception as e:
         return jsonify(status="error", response=str(e)), 400

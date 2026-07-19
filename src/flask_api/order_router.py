@@ -18,5 +18,7 @@ def send_order():
             print(f"[Port {FIX_PORT}] Sent:", message.strip())
             print("Order received:", order)
             return jsonify(status="ok", received=order), 200
+    except OSError as e:
+        return jsonify(status="error", message=str(e)), 502
     except Exception as e:
         return jsonify(status="error", message=str(e)), 400

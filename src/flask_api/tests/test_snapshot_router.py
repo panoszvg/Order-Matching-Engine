@@ -49,10 +49,10 @@ def test_get_snapshot_sends_correct_command(mock_conn, client):
 
 
 @patch("snapshot_router.socket.create_connection")
-def test_get_snapshot_connection_failure_returns_400(mock_conn, client):
+def test_get_snapshot_connection_failure_returns_502(mock_conn, client):
     mock_conn.side_effect = ConnectionRefusedError("engine not running")
     resp = client.get("/api/snapshot/BTC")
-    assert resp.status_code == 400
+    assert resp.status_code == 502
 
 
 @patch("snapshot_router.socket.create_connection")
@@ -95,7 +95,7 @@ def test_export_snapshot_sends_correct_command(mock_conn, client):
 
 
 @patch("snapshot_router.socket.create_connection")
-def test_export_snapshot_connection_failure_returns_400(mock_conn, client):
+def test_export_snapshot_connection_failure_returns_502(mock_conn, client):
     mock_conn.side_effect = ConnectionRefusedError("engine not running")
     resp = client.post("/api/snapshot/export", json={"symbol": "BTC"})
-    assert resp.status_code == 400
+    assert resp.status_code == 502

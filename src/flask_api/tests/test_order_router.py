@@ -67,10 +67,10 @@ def test_fix_message_sent_to_socket(mock_conn, client):
 # ── Error cases ───────────────────────────────────────────────────────────────
 
 @patch("order_router.socket.create_connection")
-def test_socket_connection_failure_returns_400(mock_conn, client):
+def test_socket_connection_failure_returns_502(mock_conn, client):
     mock_conn.side_effect = ConnectionRefusedError("engine not running")
     resp = client.post("/api/send-order", json=VALID_ORDER)
-    assert resp.status_code == 400
+    assert resp.status_code == 502
 
 
 @patch("order_router.socket.create_connection")
