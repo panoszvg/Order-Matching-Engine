@@ -198,7 +198,7 @@ void Book::exportSnapshot() const {
 	std::string filename = "snapshots/book_" + security->getSymbol() + "_" + timestamp + ".json";
 	std::ofstream out(filename);
 	if (!out.is_open()) {
-		spdlog::error("Failed to write snapshot for {} to {}", security->getSymbol(), filename);
+		logger->error("Failed to write snapshot for {} to {}", security->getSymbol(), filename);
 		return;
 	}
 
