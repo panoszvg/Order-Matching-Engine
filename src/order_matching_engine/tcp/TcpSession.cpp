@@ -1,4 +1,5 @@
 #include "TcpSession.h"
+#include "Logger.h"
 
 void TcpSession::start() {
 	read();
@@ -19,7 +20,7 @@ void TcpSession::read() {
 
 				self->read(); // Continue reading
 			} else {
-				std::cout << "Client disconnected: " << ec.message() << std::endl;
+				netLogger->info("Client disconnected: {}", ec.message());
 			}
 		}
 	);
@@ -30,7 +31,7 @@ void TcpSession::send(const std::string& message) {
 	boost::asio::async_write(socket_, boost::asio::buffer(message + '\n'),
 		[self](boost::system::error_code ec, std::size_t) {
 			if (ec) {
-				std::cerr << "Send failed: " << ec.message() << std::endl;
+				netLogger->error("Send failed: {}", ec.message());
 			}
 		});
 }

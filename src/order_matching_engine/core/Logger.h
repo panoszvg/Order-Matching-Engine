@@ -7,5 +7,6 @@
 #include <spdlog/spdlog.h>
 
 extern std::shared_ptr<spdlog::logger> logger;
+extern std::shared_ptr<spdlog::logger> netLogger;
 
 #endif // LOGGER_H
