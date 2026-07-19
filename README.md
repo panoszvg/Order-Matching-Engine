@@ -8,7 +8,6 @@ A WIP **C++17 trading engine** with TCP order ingress, price–time matching, JS
 - Simple & FIX-like message parsers
 - Snapshot export (JSON) for API/UI
 - Dockerized for full-stack spin-up
-- (Planned) Redis Pub/Sub + WebSocket
 
 ## Project Structure
 ```
@@ -31,10 +30,6 @@ Order-Matching-Engine/
    ```bash
    docker-compose up --build
    ```
-
-## Roadmap
-- Redis + WebSocket live updates
-- React UI for book/trade display
 
 ## Status
 🚧 Work in progress
