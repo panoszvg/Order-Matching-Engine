@@ -3,13 +3,12 @@
 
 #pragma once
 #include <string>
-
-class TcpSession;
+#include "ISession.h"
 
 class IMessageHandler {
 public:
 	virtual ~IMessageHandler() = default;
-	virtual void handle(const std::string& rawMessage, TcpSession& session) = 0;
+	virtual void handle(const std::string& rawMessage, ISession& session) = 0;
 };
 
 #endif // IMESSAGEHANDLER_H

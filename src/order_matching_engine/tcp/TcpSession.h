@@ -5,10 +5,11 @@
 #include <memory>
 #include <iostream>
 #include "IMessageHandler.h"
+#include "ISession.h"
 
 using boost::asio::ip::tcp;
 
-class TcpSession : public std::enable_shared_from_this<TcpSession> {
+class TcpSession : public ISession, public std::enable_shared_from_this<TcpSession> {
 private:
 	tcp::socket socket_;
 	boost::asio::streambuf buffer_;
@@ -20,7 +21,7 @@ public:
 		: socket_(std::move(socket)), handler_(std::move(handler)) {}
 
 	void start();
-	void send(const std::string& message);
+	void send(const std::string& message) override;
 };
 
 #endif // TCPSESSION_H

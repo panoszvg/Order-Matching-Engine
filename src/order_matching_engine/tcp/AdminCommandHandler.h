@@ -2,7 +2,7 @@
 #define ADMINCOMMANDHANDLER_H
 
 #include "IMessageHandler.h"
-#include "TcpSession.h"
+#include "ISession.h"
 #include "Book.h"
 #include "Order.h"
 #include "Logger.h"
@@ -15,11 +15,11 @@ using json = nlohmann::json;
 class AdminCommandHandler : public IMessageHandler {
 private:
 	std::unordered_map<std::string, std::unique_ptr<Book>>& books_;
-	
+
 public:
 	AdminCommandHandler(std::unordered_map<std::string, std::unique_ptr<Book>>& books);
 
-	void handle(const std::string& rawMessage, TcpSession& session) override;
+	void handle(const std::string& rawMessage, ISession& session) override;
 };
 
 

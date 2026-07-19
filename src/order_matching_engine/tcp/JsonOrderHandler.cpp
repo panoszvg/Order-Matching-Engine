@@ -3,7 +3,7 @@
 JsonOrderHandler::JsonOrderHandler(std::unordered_map<std::string, std::unique_ptr<Book>>& books)
 	: books_(books) {}
 
-void JsonOrderHandler::handle(const std::string& rawMessage, TcpSession& session) {
+void JsonOrderHandler::handle(const std::string& rawMessage, ISession& session) {
 	try {
 		auto j = json::parse(rawMessage);
 

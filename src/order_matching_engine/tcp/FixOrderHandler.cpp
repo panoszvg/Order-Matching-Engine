@@ -4,7 +4,7 @@
 FixOrderHandler::FixOrderHandler(std::unordered_map<std::string, std::unique_ptr<Book>>& books)
 	: books_(books) {}
 
-void FixOrderHandler::handle(const std::string& rawMessage, TcpSession& session) {
+void FixOrderHandler::handle(const std::string& rawMessage, ISession& session) {
 	try {
 		FixMessage fixMsg;
 		fixMsg.populate(rawMessage);

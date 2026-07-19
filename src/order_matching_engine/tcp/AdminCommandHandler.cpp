@@ -3,7 +3,7 @@
 AdminCommandHandler::AdminCommandHandler(std::unordered_map<std::string, std::unique_ptr<Book>>& books)
 	: books_(books) {}
 
-void AdminCommandHandler::handle(const std::string& rawMessage, TcpSession& session) {
+void AdminCommandHandler::handle(const std::string& rawMessage, ISession& session) {
 	try {
 		auto json = nlohmann::json::parse(rawMessage);
 		std::string type = json["type"];

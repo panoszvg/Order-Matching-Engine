@@ -25,7 +25,8 @@ SRC_CODE = 	$(filter-out core/main.cpp, $(wildcard core/*.cpp)) \
 SRC_MAIN = core/main.cpp
 SRC_TEST = $(wildcard tests/core/*.cpp) \
            $(wildcard tests/strategy/*.cpp) \
-           $(wildcard tests/messages/*.cpp)
+           $(wildcard tests/messages/*.cpp) \
+           $(wildcard tests/tcp/*.cpp)
 
 BIN_DIR = bin
 
