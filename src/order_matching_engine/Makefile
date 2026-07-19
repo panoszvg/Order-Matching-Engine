@@ -27,9 +27,11 @@ SRC_TEST = $(wildcard tests/core/*.cpp) \
            $(wildcard tests/strategy/*.cpp) \
            $(wildcard tests/messages/*.cpp)
 
-OBJ_CODE = $(SRC_CODE:.cpp=.o)
-OBJ_MAIN = $(SRC_MAIN:.cpp=.o) $(SRC_CODE:.cpp=.o)
-OBJ_TEST = $(SRC_TEST:.cpp=.o) $(SRC_CODE:.cpp=.o)
+BIN_DIR = bin
+
+OBJ_CODE = $(addprefix $(BIN_DIR)/,$(SRC_CODE:.cpp=.o))
+OBJ_MAIN = $(addprefix $(BIN_DIR)/,$(SRC_MAIN:.cpp=.o)) $(OBJ_CODE)
+OBJ_TEST = $(addprefix $(BIN_DIR)/,$(SRC_TEST:.cpp=.o)) $(OBJ_CODE)
 
 TARGET_MAIN = order_matching_engine
 TARGET_TEST = tests/run_tests
@@ -41,7 +43,8 @@ all: $(TARGET_MAIN)
 $(TARGET_MAIN): $(OBJ_MAIN)
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(LIBS)
 
-%.o: %.cpp
+$(BIN_DIR)/%.o: %.cpp
+	@mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) $(INCLUDES) -c $< -o $@
 
 test: $(TARGET_TEST)
@@ -51,4 +54,5 @@ $(TARGET_TEST): $(OBJ_TEST)
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(LIBS_TEST)
 
 clean:
-	rm -f $(OBJ_MAIN) $(TARGET_MAIN) $(OBJ_TEST) $(TARGET_TEST)
+	rm -rf $(BIN_DIR)
+	rm -f $(TARGET_MAIN) $(TARGET_TEST)
