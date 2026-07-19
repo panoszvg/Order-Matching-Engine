@@ -191,7 +191,8 @@ void Book::printSellOrdersFromAll() {
 }
 
 void Book::exportSnapshot() const {
-	auto jsonBook = toJson();
+	std::lock_guard<std::mutex> lock(bookMutex);
+	auto jsonBook = toJsonUnlocked();
 
 	std::filesystem::create_directory("snapshots");
 	std::string timestamp = std::to_string(std::chrono::system_clock::now().time_since_epoch().count());
@@ -207,6 +208,11 @@ void Book::exportSnapshot() const {
 }
 
 json Book::toJson() const {
+	std::lock_guard<std::mutex> lock(bookMutex);
+	return toJsonUnlocked();
+}
+
+json Book::toJsonUnlocked() const {
 	json j;
 	j["symbol"] = security->getSymbol();
 	double tick = security->getTickSize();

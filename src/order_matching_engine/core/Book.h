@@ -23,7 +23,7 @@ using json = nlohmann::json;
 
 class Book : public IOrderBook {
 private:
-	std::mutex bookMutex;
+	mutable std::mutex bookMutex;
 	unordered_map<string, Order> allOrders;
 	BuyBucket  buyOrders;
 	SellBucket sellOrders;
@@ -32,6 +32,7 @@ private:
 	void insertOrderUnlocked(Order& order);
 	void cancelOrderUnlocked(const std::string& orderId);
 	Order& orderLookupUnlocked(const std::string& orderId);
+	json toJsonUnlocked() const;
 
 public:
 	explicit Book(unique_ptr<IOrderMatchingStrategy> matcher, unique_ptr<Security> security);
