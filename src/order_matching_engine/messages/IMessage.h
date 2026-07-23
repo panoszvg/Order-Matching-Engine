@@ -9,7 +9,7 @@ constexpr char SOH = '\x01';
 class IMessage {
 public:
 	virtual void populate(const string& message) = 0;
-	virtual void isValid() = 0;
+	virtual bool isValid() const = 0;
 	virtual Order makeOrder() = 0;
 	virtual ~IMessage() = default;
 };

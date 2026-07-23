@@ -124,3 +124,25 @@ TEST(SimpleMessage, UnknownTagsAreIgnored) {
     EXPECT_EQ(order.security, "BTC");
     EXPECT_EQ(order.type, BUY);
 }
+
+// ── isValid ──────────────────────────────────────────────────────────────────
+
+TEST(SimpleMessage, IsValid_WellFormedMessage_ReturnsTrue) {
+    SimpleMessage msg;
+    msg.populate(buildMsg("BTC", 1, 5.0, 100.0));
+    EXPECT_TRUE(msg.isValid());
+}
+
+TEST(SimpleMessage, IsValid_MissingSideField_ReturnsFalse) {
+    const std::string soh(1, SOH);
+    std::string msg_str = "55=BTC" + soh + "38=5.0" + soh + "44=100.0" + soh;
+    SimpleMessage msg;
+    msg.populate(msg_str);
+    EXPECT_FALSE(msg.isValid());
+}
+
+TEST(SimpleMessage, IsValid_EmptyMessage_ReturnsFalse) {
+    SimpleMessage msg;
+    msg.populate("");
+    EXPECT_FALSE(msg.isValid());
+}

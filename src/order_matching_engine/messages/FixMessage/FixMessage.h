@@ -15,10 +15,15 @@ private:
 	FixMap header;
 	FixMap body;
 	FixMap trailer;
+	string rawMessage;
+
+	bool hasField(int tag) const;
+	bool checksumValid() const;
+	bool requiredFieldsPresent() const;
 
 public:
 	void populate(const string& message) override;
-	void isValid() override;
+	bool isValid() const override;
 	Order makeOrder() override;
 	string getValue(int tag) const;
 

@@ -1,8 +1,11 @@
 #include "FixMessage.h"
 #include <string>
 #include <sstream>
+#include <iomanip>
 
 void FixMessage::populate(const string& message) {
+	rawMessage = message;
+
 	std::stringstream ss(message);
 	string token;
 	FixMap* currentMap = &header;
@@ -30,7 +33,44 @@ void FixMessage::populate(const string& message) {
 
 }
 
-void FixMessage::isValid() {}
+bool FixMessage::hasField(int tag) const {
+	return !getValue(tag).empty();
+}
+
+bool FixMessage::checksumValid() const {
+	auto checksumPos = rawMessage.rfind(string(1, SOH) + "10=");
+	std::size_t bodyEnd;
+
+	if (checksumPos != string::npos) {
+		bodyEnd = checksumPos + 1; // keep the SOH that precedes "10="
+	} else if (rawMessage.rfind("10=", 0) == 0) {
+		bodyEnd = 0; // message starts with the checksum field
+	} else {
+		return false; // no checksum field present
+	}
+
+	unsigned int sum = 0;
+	for (std::size_t i = 0; i < bodyEnd; ++i) {
+		sum += static_cast<unsigned char>(rawMessage[i]);
+	}
+
+	std::ostringstream expected;
+	expected << std::setw(3) << std::setfill('0') << (sum % 256);
+
+	return getValue(10) == expected.str();
+}
+
+bool FixMessage::requiredFieldsPresent() const {
+	static const int requiredTags[] = {8, 35, 55, 54, 38, 44};
+	for (int tag : requiredTags) {
+		if (!hasField(tag)) return false;
+	}
+	return true;
+}
+
+bool FixMessage::isValid() const {
+	return requiredFieldsPresent() && checksumValid();
+}
 
 Order FixMessage::makeOrder() {
 	try {

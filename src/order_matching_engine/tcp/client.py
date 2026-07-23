@@ -41,9 +41,10 @@ def to_fix(order):
         f"44={order['price']}",
         f"38={order['quantity']}",
         f"11={order['id']}",
-        "10=000"
     ]
-    return ''.join(fields) + '\n'
+    body = '\x01'.join(fields) + '\x01'
+    checksum = sum(body.encode('utf-8')) % 256
+    return body + f"10={checksum:03d}" + '\x01' + '\n'
 
 def send_orders(port, use_fix):
     try:

@@ -1,19 +1,28 @@
 #include <gtest/gtest.h>
 #include "messages/FixMessage/FixMessage.h"
 #include <string>
+#include <cstdio>
 
 namespace {
 
-// Build a minimal FIX 4.2 New Order Single (35=D).
+std::string computeChecksum(const std::string& body) {
+    unsigned int sum = 0;
+    for (unsigned char c : body) sum += c;
+    char buf[4];
+    std::snprintf(buf, sizeof(buf), "%03u", sum % 256);
+    return buf;
+}
+
+// Build a minimal, checksum-valid FIX 4.2 New Order Single (35=D).
 std::string buildFix(const std::string& symbol, int side, double qty, double price) {
     const std::string soh(1, SOH);
-    return "8=FIX.4.2" + soh
-         + "35=D"      + soh
-         + "55=" + symbol + soh
-         + "54=" + std::to_string(side)  + soh
-         + "38=" + std::to_string(qty)   + soh
-         + "44=" + std::to_string(price) + soh
-         + "10=000"    + soh;
+    std::string body = "8=FIX.4.2" + soh
+                      + "35=D"      + soh
+                      + "55=" + symbol + soh
+                      + "54=" + std::to_string(side)  + soh
+                      + "38=" + std::to_string(qty)   + soh
+                      + "44=" + std::to_string(price) + soh;
+    return body + "10=" + computeChecksum(body) + soh;
 }
 
 } // namespace
@@ -70,8 +79,8 @@ TEST(FixMessage, GetValue_BodyField) {
 TEST(FixMessage, GetValue_TrailerField) {
     FixMessage msg;
     msg.populate(buildFix("BTC", 1, 5.0, 100.0));
-    // tag 10 (Checksum) lands in the trailer section
-    EXPECT_EQ(msg.getValue(10), "000");
+    // tag 10 (Checksum) lands in the trailer section and is not empty
+    EXPECT_FALSE(msg.getValue(10).empty());
 }
 
 TEST(FixMessage, GetValue_MissingTag_ReturnsEmpty) {
@@ -141,4 +150,61 @@ TEST(FixMessage, EmptyMessage_GetValueReturnsEmpty) {
     msg.populate("");
     EXPECT_EQ(msg.getValue(55), "");
     EXPECT_EQ(msg.getValue(54), "");
+}
+
+// ── isValid ──────────────────────────────────────────────────────────────────
+
+TEST(FixMessage, IsValid_WellFormedMessage_ReturnsTrue) {
+    FixMessage msg;
+    msg.populate(buildFix("BTC", 1, 5.0, 100.0));
+    EXPECT_TRUE(msg.isValid());
+}
+
+TEST(FixMessage, IsValid_WrongChecksum_ReturnsFalse) {
+    const std::string soh(1, SOH);
+    std::string raw = "8=FIX.4.2" + soh + "35=D" + soh
+                     + "55=BTC"    + soh
+                     + "54=1"      + soh
+                     + "38=5.0"    + soh
+                     + "44=100.0"  + soh
+                     + "10=000"    + soh; // deliberately wrong checksum
+    FixMessage msg;
+    msg.populate(raw);
+    EXPECT_FALSE(msg.isValid());
+}
+
+TEST(FixMessage, IsValid_MissingChecksumField_ReturnsFalse) {
+    const std::string soh(1, SOH);
+    std::string raw = "8=FIX.4.2" + soh + "35=D" + soh
+                     + "55=BTC"    + soh
+                     + "54=1"      + soh
+                     + "38=5.0"    + soh
+                     + "44=100.0"  + soh; // no tag 10 at all
+    FixMessage msg;
+    msg.populate(raw);
+    EXPECT_FALSE(msg.isValid());
+}
+
+TEST(FixMessage, IsValid_MissingRequiredField_ReturnsFalse) {
+    const std::string soh(1, SOH);
+    // 44 (Price) omitted from the body used for the checksum
+    std::string body = "8=FIX.4.2" + soh + "35=D" + soh
+                      + "55=BTC"    + soh
+                      + "54=1"      + soh
+                      + "38=5.0"    + soh;
+    unsigned int sum = 0;
+    for (unsigned char c : body) sum += c;
+    char buf[4];
+    std::snprintf(buf, sizeof(buf), "%03u", sum % 256);
+    std::string raw = body + "10=" + buf + soh;
+
+    FixMessage msg;
+    msg.populate(raw);
+    EXPECT_FALSE(msg.isValid());
+}
+
+TEST(FixMessage, IsValid_EmptyMessage_ReturnsFalse) {
+    FixMessage msg;
+    msg.populate("");
+    EXPECT_FALSE(msg.isValid());
 }

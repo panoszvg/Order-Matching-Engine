@@ -27,7 +27,14 @@ void SimpleMessage::populate(const string& message) {
 	}
 }
 
-void SimpleMessage::isValid() {}
+bool SimpleMessage::isValid() const {
+	static const int requiredTags[] = {55, 54, 38, 44};
+	for (int tag : requiredTags) {
+		auto it = fields.find(tag);
+		if (it == fields.end() || it->second.empty()) return false;
+	}
+	return true;
+}
 
 Order SimpleMessage::makeOrder() {
 	string  tag_55 = fields[55];

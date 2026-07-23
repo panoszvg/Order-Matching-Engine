@@ -10,7 +10,7 @@ private:
 
 public:
 	void populate(const string& message) override;
-	void isValid() override;
+	bool isValid() const override;
 	Order makeOrder() override;
 };
 

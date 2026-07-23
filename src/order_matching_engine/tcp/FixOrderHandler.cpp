@@ -9,6 +9,12 @@ void FixOrderHandler::handle(const std::string& rawMessage, ISession& session) {
 		FixMessage fixMsg;
 		fixMsg.populate(rawMessage);
 
+		if (!fixMsg.isValid()) {
+			logger->error("Invalid FIX message: '{}'", rawMessage);
+			session.send(R"({"status":"error","message":"Invalid FIX message"})");
+			return;
+		}
+
 		auto order = fixMsg.makeOrder();
 
 		if (books_.count(order.security)) {
