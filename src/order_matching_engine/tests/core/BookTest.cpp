@@ -292,6 +292,20 @@ TEST(Book, ToJson_ActiveBuyIncluded) {
     EXPECT_TRUE(j["asks"].empty());
 }
 
+TEST(Book, ToJson_PriceNotCorruptedByFloatingPointRounding) {
+    // Regression test: toJson() previously re-snapped already-aligned prices
+    // via round(price / tick) * tick, which introduced binary floating-point
+    // noise (e.g. 1018.31 -> 1018.3100000000001) even though the price was
+    // already valid on insert.
+    auto book = makeBook("TST", 0.01, 0.5);
+    auto order = Order("TST", SELL, 9.0, 1018.31);
+    book->insertOrder(order);
+    json j = book->toJson();
+
+    ASSERT_EQ(j["asks"].size(), 1u);
+    EXPECT_EQ(j["asks"][0]["price"].dump(), "1018.31");
+}
+
 TEST(Book, ToJson_ActiveSellIncluded) {
     auto book = makeBook();
     auto order = Order("TST", SELL, 3.0, 101.0);

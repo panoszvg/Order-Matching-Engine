@@ -215,13 +215,15 @@ json Book::toJson() const {
 json Book::toJsonUnlocked() const {
 	json j;
 	j["symbol"] = security->getSymbol();
-	double tick = security->getTickSize();
 
+	// Prices are already tick-aligned at insert time (see isPriceTickAligned
+	// in insertOrderUnlocked), so they're written out as-is here rather than
+	// re-snapped, which would reintroduce floating-point rounding noise.
 	j["bids"] = json::array();
 	for (const auto& entry : buyOrders.queue) {
 		const Order& o = allOrders.at(entry.id);
 		j["bids"].push_back({
-			{"price",    round(o.price / tick) * tick},
+			{"price",    o.price},
 			{"quantity", o.quantity}
 		});
 	}
@@ -230,7 +232,7 @@ json Book::toJsonUnlocked() const {
 	for (const auto& entry : sellOrders.queue) {
 		const Order& o = allOrders.at(entry.id);
 		j["asks"].push_back({
-			{"price",    round(o.price / tick) * tick},
+			{"price",    o.price},
 			{"quantity", o.quantity}
 		});
 	}
