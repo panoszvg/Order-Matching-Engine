@@ -5,6 +5,7 @@ CXXFLAGS = -std=c++17 -pthread
 INCLUDES = -I./ -I./core -I./tests
 
 UNAME_S := $(shell uname -s)
+UNAME_M := $(shell uname -m)
 
 ifeq ($(UNAME_S),Linux)
     LIBS = -lspdlog -lfmt -lboost_system
@@ -14,6 +15,16 @@ endif
 ifeq ($(findstring MINGW,$(UNAME_S)),MINGW)
     LIBS = -lspdlog -lfmt -lws2_32 -lmswsock
     LIBS_TEST = $(LIBS) -lgmock_main -lgmock -lgtest
+endif
+
+ifeq ($(UNAME_S),Darwin)
+ifeq ($(UNAME_M),arm64)
+    INCLUDES += -I/opt/homebrew/include
+    LIBS = -L/opt/homebrew/lib -lspdlog -lfmt
+    LIBS_TEST = $(LIBS) -lgmock_main -lgmock -lgtest
+    # Homebrew's fmt deprecates an implicit conversion spdlog 1.17.0 still relies on internally
+    CXXFLAGS += -Wno-deprecated-declarations
+endif
 endif
 
 SRC_CODE = 	$(filter-out core/main.cpp, $(wildcard core/*.cpp)) \
