@@ -34,3 +34,4 @@
 .vscode/
 logs/
 **/__pycache__/**
+run_tests
