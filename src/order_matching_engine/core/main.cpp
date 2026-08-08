@@ -5,6 +5,7 @@
 #include "SecurityProvider.h"
 #include "benchmark/Benchmark.h"
 #include "strategy/PriceTimePriorityStrategy.h"
+#include "strategy/TopProRataStrategy.h"
 #include "tcp/TcpServer.h"
 #include "tcp/FixOrderHandler.h"
 #include "tcp/JsonOrderHandler.h"
@@ -25,8 +26,14 @@ int main(int argc, char* argv[]) {
 		SecurityProvider provider("input_files/securities.csv");
 		auto securities = provider.loadSecurities();
 		for (auto& [securityStr, security] : securities) {
+			std::unique_ptr<IOrderMatchingStrategy> strategy;
+			if (securityStr == "SOFR")
+				strategy = std::make_unique<TopProRataStrategy>();
+			else
+				strategy = std::make_unique<PriceTimePriorityStrategy>();
+
 			books[securityStr] = std::make_unique<Book>(
-				std::make_unique<PriceTimePriorityStrategy>(),
+				std::move(strategy),
 				std::move(security)
 			);
 		}

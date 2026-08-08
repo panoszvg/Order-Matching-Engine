@@ -7,10 +7,6 @@
 
 constexpr double EPSILON = 1e-8;
 
-inline double getPriceBucket(double price, double bucket_size) {
-	return std::floor(price / bucket_size) * bucket_size;
-}
-
 inline int compareDoubles(double a, double b) {
 	if (std::fabs(a - b) < EPSILON) return 0;
 	return (a < b) ? -1 : 1;
