@@ -2,7 +2,6 @@
 #define IMESSAGE_H
 
 #include "Order.h"
-#include <memory>
 
 constexpr char SOH = '\x01';
 

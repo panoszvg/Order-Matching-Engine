@@ -3,6 +3,15 @@
 AdminCommandHandler::AdminCommandHandler(std::unordered_map<std::string, std::unique_ptr<Book>>& books)
 	: books_(books) {}
 
+Book* AdminCommandHandler::findBook(const std::string& symbol, ISession& session) {
+	auto it = books_.find(symbol);
+	if (it == books_.end()) {
+		session.send(R"({"status":"error","message":"Unknown symbol"})");
+		return nullptr;
+	}
+	return it->second.get();
+}
+
 void AdminCommandHandler::handle(const std::string& rawMessage, ISession& session) {
 	try {
 		auto json = nlohmann::json::parse(rawMessage);
@@ -11,15 +20,13 @@ void AdminCommandHandler::handle(const std::string& rawMessage, ISession& sessio
 		if (type == "GET_SNAPSHOT") {
 			try {
 				std::string symbol = json["symbol"];
-				auto it = books_.find(symbol);
-				if (it == books_.end()) {
-					session.send(R"({"status":"error","message":"Unknown symbol"})");
-				} else {
+				Book* book = findBook(symbol, session);
+				if (book) {
 					nlohmann::json response = {
 						{"status", "ok"},
 						{"message", "Snapshot for " + symbol},
 						{"symbol", symbol},
-						{"book", it->second->toJson()}
+						{"book", book->toJson()}
 					};
 					session.send(response.dump());
 					logger->info("Book was exported and returned");
@@ -32,11 +39,9 @@ void AdminCommandHandler::handle(const std::string& rawMessage, ISession& sessio
 		else if (type == "EXPORT_SNAPSHOT") {
 			try {
 				std::string symbol = json["symbol"];
-				auto it = books_.find(symbol);
-				if (it == books_.end()) {
-					session.send(R"({"status":"error","message":"Unknown symbol"})");
-				} else {
-					it->second->exportSnapshot();
+				Book* book = findBook(symbol, session);
+				if (book) {
+					book->exportSnapshot();
 					session.send(R"({"status":"ok","message":"Exported snapshot for )" + symbol + R"("})");
 					logger->info("Book was exported");
 				}

@@ -9,12 +9,8 @@
 #include <unordered_map>
 
 struct ISecurityProvider {
-private:
 	virtual std::unordered_map<string, std::unique_ptr<Security>> loadSecurities() = 0;
-
-public:
 	virtual ~ISecurityProvider() = default;
-
 };
 
 #endif // ISECURITYPROVIDER_H

@@ -16,6 +16,8 @@ class AdminCommandHandler : public IMessageHandler {
 private:
 	std::unordered_map<std::string, std::unique_ptr<Book>>& books_;
 
+	Book* findBook(const std::string& symbol, ISession& session);
+
 public:
 	AdminCommandHandler(std::unordered_map<std::string, std::unique_ptr<Book>>& books);
 

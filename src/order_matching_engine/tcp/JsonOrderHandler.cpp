@@ -12,6 +12,11 @@ void JsonOrderHandler::handle(const std::string& rawMessage, ISession& session) 
 		double price = j.at("price").get<double>();
 		double quantity = j.at("quantity").get<double>();
 
+		if (typeStr != "BUY" && typeStr != "SELL") {
+			logger->error("Unknown type: {}", typeStr);
+			session.send(R"({"status":"error","message":"Unknown type"})");
+			return;
+		}
 		OrderType type = (typeStr == "BUY") ? BUY : SELL;
 
 		auto order = std::make_unique<Order>(security, type, quantity, price);

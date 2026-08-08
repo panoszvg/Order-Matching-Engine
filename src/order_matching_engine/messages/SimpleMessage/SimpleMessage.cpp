@@ -37,10 +37,15 @@ bool SimpleMessage::isValid() const {
 }
 
 Order SimpleMessage::makeOrder() {
-	string  tag_55 = fields[55];
-	int     tag_54 = stoi(fields[54]);
-	double  tag_38 = stod(fields[38]);
-	double  tag_44 = stod(fields[44]);
+	try {
+		string  tag_55 = fields[55];
+		int     tag_54 = stoi(fields[54]);
+		double  tag_38 = stod(fields[38]);
+		double  tag_44 = stod(fields[44]);
 
-	return Order(tag_55, (tag_54 == 1) ? BUY : SELL, tag_38, tag_44);
+		return Order(tag_55, (tag_54 == 1) ? BUY : SELL, tag_38, tag_44);
+	} catch (const std::exception& e) {
+		logger->error("Simple message makeOrder failed: {}", e.what());
+		throw;
+	}
 }

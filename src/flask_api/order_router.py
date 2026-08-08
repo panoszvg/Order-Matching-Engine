@@ -8,10 +8,19 @@ FIX_PORT = 9002
 
 order_bp = Blueprint('orders', __name__)
 
+REQUIRED_FIELDS = ["id", "security", "type", "price", "quantity"]
+
 @order_bp.route('/send-order', methods=['POST'])
 def send_order():
+    order = request.get_json(silent=True)
+    if not order:
+        return jsonify(status="error", message="Request body must be JSON"), 400
+
+    missing = [field for field in REQUIRED_FIELDS if field not in order]
+    if missing:
+        return jsonify(status="error", message=f"Missing fields: {', '.join(missing)}"), 400
+
     try:
-        order = request.get_json()
         with socket.create_connection((HOST, FIX_PORT)) as sock:
             message = to_fix(order)
             sock.sendall(message.encode('utf-8'))

@@ -3,7 +3,6 @@
 #include "IOrderBook.h"
 #include <vector>
 #include <cmath>
-#include <tuple>
 #include <list>
 
 void TopProRataStrategy::matchBuyOrder(Order& newOrder, IOrderBook& book) {
