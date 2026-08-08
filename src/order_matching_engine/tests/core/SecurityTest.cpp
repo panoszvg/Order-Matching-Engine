@@ -11,9 +11,9 @@ TEST(Security, GetTickSize) {
     EXPECT_DOUBLE_EQ(sec.getTickSize(), 0.01);
 }
 
-TEST(Security, GetBucketSize) {
+TEST(Security, GetLotSize) {
     Security sec("ETH", 0.01, 0.1);
-    EXPECT_DOUBLE_EQ(sec.getBucketSize(), 0.1);
+    EXPECT_DOUBLE_EQ(sec.getLotSize(), 0.1);
 }
 
 TEST(Security, SymbolIsCaseSensitive) {
@@ -30,10 +30,10 @@ TEST(Security, NegativeTickSizeThrows) {
     EXPECT_THROW(Security("ETH", -0.01, 0.1), std::invalid_argument);
 }
 
-TEST(Security, ZeroBucketSizeThrows) {
+TEST(Security, ZeroLotSizeThrows) {
     EXPECT_THROW(Security("ETH", 0.01, 0.0), std::invalid_argument);
 }
 
-TEST(Security, NegativeBucketSizeThrows) {
+TEST(Security, NegativeLotSizeThrows) {
     EXPECT_THROW(Security("ETH", 0.01, -0.1), std::invalid_argument);
 }

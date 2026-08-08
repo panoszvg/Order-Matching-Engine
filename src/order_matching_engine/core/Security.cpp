@@ -2,17 +2,17 @@
 #include <sstream>
 #include <stdexcept>
 
-Security::Security(string symbol, double tickSize, double bucketSize)
-	: symbol(std::move(symbol)), tickSize(tickSize), bucketSize(bucketSize) {
+Security::Security(string symbol, double tickSize, double lotSize)
+	: symbol(std::move(symbol)), tickSize(tickSize), lotSize(lotSize) {
 	if (tickSize <= 0.0) {
 		std::ostringstream oss;
 		oss << "Tick size (" << tickSize << ") must be greater than zero";
 		throw std::invalid_argument(oss.str());
 	}
 
-	if (bucketSize <= 0.0) {
+	if (lotSize <= 0.0) {
 		std::ostringstream oss;
-		oss << "Bucket size (" << bucketSize << ") must be greater than zero";
+		oss << "Lot size (" << lotSize << ") must be greater than zero";
 		throw std::invalid_argument(oss.str());
 	}
 }
@@ -25,6 +25,6 @@ double Security::getTickSize() const {
 	return tickSize;
 }
 
-double Security::getBucketSize() const {
-	return bucketSize;
+double Security::getLotSize() const {
+	return lotSize;
 }

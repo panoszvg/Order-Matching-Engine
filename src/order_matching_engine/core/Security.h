@@ -6,16 +6,16 @@ using std::string;
 
 class Security {
 public:
-	Security(string symbol, double tickSize, double bucketSize);
+	Security(string symbol, double tickSize, double lotSize);
 
 	const string& getSymbol() const;
 	double getTickSize() const;
-	double getBucketSize() const;
+	double getLotSize() const;
 
 private:
 	string symbol;
 	double tickSize;
-	double bucketSize;
+	double lotSize;
 };
 
 #endif // SECURITY_H
