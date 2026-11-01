@@ -38,7 +38,6 @@ template<typename Entry>
 struct Bucket {
 	std::set<Entry> queue;
 	std::unordered_map<std::string, typename std::set<Entry>::iterator> index;
-	double total_quantity = 0;
 
 	void push(const Entry& e) {
 		auto [it, ok] = queue.insert(e);

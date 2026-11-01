@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 #include "tcp/FixOrderHandler.h"
 #include "FakeSession.h"
+#include "TestHelpers.h"
 #include "Book.h"
 #include "Security.h"
 #include "strategy/PriceTimePriorityStrategy.h"
@@ -62,7 +63,7 @@ TEST(FixOrderHandler, ValidOrder_InsertsIntoBook) {
 
     handler.handle(buildFix("TST", 1, 5.0, 100.0), session);
 
-    EXPECT_DOUBLE_EQ(books["TST"]->getBuyOrders().total_quantity, 5.0);
+    EXPECT_DOUBLE_EQ(restingBuyQuantity(*books["TST"]), 5.0);
 }
 
 TEST(FixOrderHandler, UnknownSecurity_SendsErrorResponse) {
@@ -121,5 +122,5 @@ TEST(FixOrderHandler, InvalidChecksum_RejectedBeforeReachingBook) {
     auto response = json::parse(session.sent[0]);
     EXPECT_EQ(response["status"], "error");
     EXPECT_EQ(response["message"], "Invalid FIX message");
-    EXPECT_DOUBLE_EQ(books["TST"]->getBuyOrders().total_quantity, 0.0);
+    EXPECT_DOUBLE_EQ(restingBuyQuantity(*books["TST"]), 0.0);
 }

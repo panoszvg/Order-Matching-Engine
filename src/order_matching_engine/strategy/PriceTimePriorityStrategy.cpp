@@ -26,9 +26,8 @@ void PriceTimePriorityStrategy::matchBuyAgainstBucket(Order& buyOrder, SellBucke
 
 		double tradedQty = std::min(buyOrder.quantity, sellOrder.quantity);
 
-		buyOrder.quantity     -= tradedQty;
-		sellOrder.quantity    -= tradedQty;
-		bucket.total_quantity -= tradedQty;
+		buyOrder.quantity  -= tradedQty;
+		sellOrder.quantity -= tradedQty;
 
 		buyOrder.fulfilled  = compareDoubles(buyOrder.quantity,  0.0) == 0 ? FULLY_FULFILLED : PARTIALLY_FULFILLED;
 		sellOrder.fulfilled = compareDoubles(sellOrder.quantity, 0.0) == 0 ? FULLY_FULFILLED : PARTIALLY_FULFILLED;
@@ -52,9 +51,8 @@ void PriceTimePriorityStrategy::matchSellAgainstBucket(Order& sellOrder, BuyBuck
 
 		double tradedQty = std::min(sellOrder.quantity, buyOrder.quantity);
 
-		sellOrder.quantity    -= tradedQty;
-		buyOrder.quantity     -= tradedQty;
-		bucket.total_quantity -= tradedQty;
+		sellOrder.quantity -= tradedQty;
+		buyOrder.quantity  -= tradedQty;
 
 		sellOrder.fulfilled = compareDoubles(sellOrder.quantity, 0.0) == 0 ? FULLY_FULFILLED : PARTIALLY_FULFILLED;
 		buyOrder.fulfilled  = compareDoubles(buyOrder.quantity,  0.0) == 0 ? FULLY_FULFILLED : PARTIALLY_FULFILLED;

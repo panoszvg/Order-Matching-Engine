@@ -20,9 +20,8 @@ void TopProRataStrategy::matchSellOrder(Order& newOrder, IOrderBook& book) {
 template<typename BucketT>
 void TopProRataStrategy::applyFill(Order& incoming, Order& resting, const std::string& id,
                                     double tradedQty, BucketT& bucket, OrderMap& orders) {
-	incoming.quantity     -= tradedQty;
-	resting.quantity      -= tradedQty;
-	bucket.total_quantity -= tradedQty;
+	incoming.quantity -= tradedQty;
+	resting.quantity  -= tradedQty;
 
 	incoming.fulfilled = compareDoubles(incoming.quantity, 0.0) == 0 ? FULLY_FULFILLED : PARTIALLY_FULFILLED;
 	resting.fulfilled  = compareDoubles(resting.quantity,  0.0) == 0 ? FULLY_FULFILLED : PARTIALLY_FULFILLED;

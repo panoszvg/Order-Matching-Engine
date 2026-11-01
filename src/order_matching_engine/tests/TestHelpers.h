@@ -26,3 +26,14 @@ inline std::shared_ptr<Book> makeBookWithStrategy(
         std::make_unique<Security>(symbol, tick, lotSize)
     );
 }
+
+template<typename BucketT>
+inline double restingQuantity(const BucketT& bucket, const OrderMap& orders) {
+    double total = 0.0;
+    for (const auto& entry : bucket.queue)
+        total += orders.at(entry.id).quantity;
+    return total;
+}
+
+inline double restingBuyQuantity(Book& book)  { return restingQuantity(book.getBuyOrders(),  book.getOrders()); }
+inline double restingSellQuantity(Book& book) { return restingQuantity(book.getSellOrders(), book.getOrders()); }

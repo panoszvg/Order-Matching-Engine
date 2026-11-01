@@ -44,14 +44,14 @@ TEST(Book, Insert_Valid_Buy_Order) {
     auto book = makeBook();
     auto order = Order("TST", BUY, 7.0, 1.0);
     EXPECT_NO_THROW(book->insertOrder(order));
-    EXPECT_DOUBLE_EQ(book->getBuyOrders().total_quantity, 7.0);
+    EXPECT_DOUBLE_EQ(restingBuyQuantity(*book), 7.0);
 }
 
 TEST(Book, Insert_Valid_Sell_Order) {
     auto book = makeBook();
     auto order = Order("TST", SELL, 6.0, 1.5);
     EXPECT_NO_THROW(book->insertOrder(order));
-    EXPECT_DOUBLE_EQ(book->getSellOrders().total_quantity, 6.0);
+    EXPECT_DOUBLE_EQ(restingSellQuantity(*book), 6.0);
 }
 
 TEST(Book, Insert_Duplicate_Id_Throws) {
@@ -97,8 +97,8 @@ TEST(Book, NoMatch_Buy_Price_Below_Ask) {
 
     EXPECT_EQ(book->getOrders().at(sell.id).fulfilled, NOT_FULFILLED);
     EXPECT_EQ(book->getOrders().at(buy.id).fulfilled,  NOT_FULFILLED);
-    EXPECT_EQ(book->getSellOrders().total_quantity, 5.0);
-    EXPECT_EQ(book->getBuyOrders().total_quantity,  5.0);
+    EXPECT_EQ(restingSellQuantity(*book), 5.0);
+    EXPECT_EQ(restingBuyQuantity(*book),  5.0);
 }
 
 TEST(Book, NoMatch_Sell_Price_Above_Bid) {
@@ -124,7 +124,7 @@ TEST(Book, PartialFill_Buy_Less_Than_Sell) {
     // sell partially filled → still in book
     EXPECT_EQ(book->getOrders().at(sell.id).fulfilled, PARTIALLY_FULFILLED);
     EXPECT_DOUBLE_EQ(book->getOrders().at(sell.id).quantity, 7.0);
-    EXPECT_DOUBLE_EQ(book->getSellOrders().total_quantity, 7.0);
+    EXPECT_DOUBLE_EQ(restingSellQuantity(*book), 7.0);
 }
 
 TEST(Book, PartialFill_Buy_More_Than_Sell) {
@@ -139,7 +139,7 @@ TEST(Book, PartialFill_Buy_More_Than_Sell) {
     // buy partially filled → still in book
     EXPECT_EQ(book->getOrders().at(buy.id).fulfilled, PARTIALLY_FULFILLED);
     EXPECT_DOUBLE_EQ(book->getOrders().at(buy.id).quantity, 7.0);
-    EXPECT_DOUBLE_EQ(book->getBuyOrders().total_quantity, 7.0);
+    EXPECT_DOUBLE_EQ(restingBuyQuantity(*book), 7.0);
 }
 
 TEST(Book, Match_Buy_Consumes_Multiple_Sells) {
@@ -203,14 +203,14 @@ TEST(Book, Cancel_RemovesOrderFromBook) {
     EXPECT_EQ(book->getOrders().count(order.id), 0u);
 }
 
-TEST(Book, Cancel_ReducesTotalQuantity) {
+TEST(Book, Cancel_ReducesRestingQuantity) {
     auto book = makeBook();
     auto order = Order("TST", BUY, 5.0, 100.0);
     book->insertOrder(order);
-    EXPECT_DOUBLE_EQ(book->getBuyOrders().total_quantity, 5.0);
+    EXPECT_DOUBLE_EQ(restingBuyQuantity(*book), 5.0);
 
     book->cancelOrder(order.id);
-    EXPECT_DOUBLE_EQ(book->getBuyOrders().total_quantity, 0.0);
+    EXPECT_DOUBLE_EQ(restingBuyQuantity(*book), 0.0);
 }
 
 TEST(Book, Cancel_NonExistent_Throws) {
@@ -250,7 +250,7 @@ TEST(Book, Modify_UpdatesRestingOrder) {
     // Original order was cancelled → erased from allOrders
     EXPECT_EQ(book->getOrders().count(sell.id), 0u);
     // A new sell with updated price holds the book quantity
-    EXPECT_NEAR(book->getSellOrders().total_quantity, 10.0, 1e-9);
+    EXPECT_NEAR(restingSellQuantity(*book), 10.0, 1e-9);
 }
 
 TEST(Book, Modify_NonExistent_Throws) {
@@ -355,33 +355,33 @@ TEST(Book, ToJson_PartiallyFilledOrderIncluded) {
     EXPECT_NEAR(j["asks"][0]["quantity"].get<double>(), 7.0, 1e-9);
 }
 
-// ── Total quantity tracking ───────────────────────────────────────────────────
+// ── Resting quantity ─────────────────────────────────────────────────────────
 
-TEST(Book, TotalQuantity_IncreasesOnInsert) {
+TEST(Book, RestingQuantity_IncreasesOnInsert) {
     auto book = makeBook();
     auto b1 = Order("TST", BUY, 3.0, 100.0);
     auto b2 = Order("TST", BUY, 7.0, 100.0);
     book->insertOrder(b1);
-    EXPECT_DOUBLE_EQ(book->getBuyOrders().total_quantity, 3.0);
+    EXPECT_DOUBLE_EQ(restingBuyQuantity(*book), 3.0);
     book->insertOrder(b2);
-    EXPECT_DOUBLE_EQ(book->getBuyOrders().total_quantity, 10.0);
+    EXPECT_DOUBLE_EQ(restingBuyQuantity(*book), 10.0);
 }
 
-TEST(Book, TotalQuantity_DecreasesOnMatch) {
+TEST(Book, RestingQuantity_DecreasesOnMatch) {
     auto book = makeBook();
     auto sell = Order("TST", SELL, 10.0, 100.0);
     book->insertOrder(sell);
-    EXPECT_DOUBLE_EQ(book->getSellOrders().total_quantity, 10.0);
+    EXPECT_DOUBLE_EQ(restingSellQuantity(*book), 10.0);
 
     auto buy = Order("TST", BUY, 4.0, 100.0);
     book->insertOrder(buy);
-    EXPECT_DOUBLE_EQ(book->getSellOrders().total_quantity, 6.0);
+    EXPECT_DOUBLE_EQ(restingSellQuantity(*book), 6.0);
 }
 
-TEST(Book, TotalQuantity_DecreasesOnCancel) {
+TEST(Book, RestingQuantity_DecreasesOnCancel) {
     auto book = makeBook();
     auto order = Order("TST", SELL, 5.0, 100.0);
     book->insertOrder(order);
     book->cancelOrder(order.id);
-    EXPECT_DOUBLE_EQ(book->getSellOrders().total_quantity, 0.0);
+    EXPECT_DOUBLE_EQ(restingSellQuantity(*book), 0.0);
 }

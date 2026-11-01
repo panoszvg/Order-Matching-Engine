@@ -38,10 +38,8 @@ void Book::insertOrderUnlocked(Order& order) {
 		allOrders.erase(order.id);
 	} else if (stored.type == BUY) {
 		buyOrders.push(BuyEntry{stored.price, stored.getMicroTimestamp(), stored.id});
-		buyOrders.total_quantity += stored.quantity;
 	} else {
 		sellOrders.push(SellEntry{stored.price, stored.getMicroTimestamp(), stored.id});
-		sellOrders.total_quantity += stored.quantity;
 	}
 }
 
@@ -55,10 +53,8 @@ void Book::cancelOrderUnlocked(const string& orderId) {
 		return;
 
 	if (order.type == BUY) {
-		buyOrders.total_quantity -= order.quantity;
 		buyOrders.erase(orderId);
 	} else {
-		sellOrders.total_quantity -= order.quantity;
 		sellOrders.erase(orderId);
 	}
 
@@ -147,7 +143,6 @@ void Book::printBuyOrders() {
 	}
 	logger->info("# Buy Orders");
 	logger->info("=============");
-	logger->info("  total_quantity: {:.6}", buyOrders.total_quantity);
 	for (const auto& entry : buyOrders.queue) {
 		allOrders.at(entry.id).print();
 	}
@@ -172,7 +167,6 @@ void Book::printSellOrders() {
 	}
 	logger->info("# Sell Orders");
 	logger->info("=============");
-	logger->info("  total_quantity: {:.6}", sellOrders.total_quantity);
 	for (const auto& entry : sellOrders.queue) {
 		allOrders.at(entry.id).print();
 	}
