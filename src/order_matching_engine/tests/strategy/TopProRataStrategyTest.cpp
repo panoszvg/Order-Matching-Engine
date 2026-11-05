@@ -7,7 +7,7 @@
 // Fully-filled orders are erased from allOrders: count(id)==0 means filled.
 // Unfilled/partial orders are still in allOrders and can be inspected via getOrders().at(id).
 //
-// TopProRataStrategy: PRIORITY_LOT = 5.0. Tests use lotSize = 1.0 so floored shares
+// TopProRataStrategy: PRIORITY_SLICE = 5 * lotSize. Tests use lotSize = 1.0 so floored shares
 // land on whole numbers and results are easy to hand-verify.
 
 namespace {
@@ -35,7 +35,7 @@ TEST(TopProRataStrategy, SingleOrderAtLevel_DegeneratesToPriceTime) {
     EXPECT_DOUBLE_EQ(book->getOrders().at(sell.id).quantity, 4.0);
 }
 
-TEST(TopProRataStrategy, IncomingBelowPriorityLot_PriorityOrderAbsorbsAll) {
+TEST(TopProRataStrategy, IncomingBelowPrioritySlice_PriorityOrderAbsorbsAll) {
     auto book = makeProRataBook();
 
     auto sell1 = makeTimedOrder("TST", SELL, 10.0, 100.0, 1000);
@@ -43,7 +43,7 @@ TEST(TopProRataStrategy, IncomingBelowPriorityLot_PriorityOrderAbsorbsAll) {
     book->insertOrder(sell1);
     book->insertOrder(sell2);
 
-    // Incoming (3.0) < PRIORITY_LOT (5.0): priority order alone absorbs the whole trade.
+    // Incoming (3.0) < PRIORITY_SLICE (5 * 1.0): priority order alone absorbs the whole trade.
     auto buy = Order("TST", BUY, 3.0, 100.0);
     book->insertOrder(buy);
 
@@ -76,7 +76,7 @@ TEST(TopProRataStrategy, IncomingCoversWholeLevel_FullyFillsLikePriceTime) {
 }
 
 // Resting sells S1=10 (earliest), S2=30, S3=60 at the same price level (total=100).
-// Incoming buy=41. PRIORITY_LOT=5, lotSize=1.
+// Incoming buy=41. PRIORITY_SLICE=5*1, lotSize=1.
 //
 // Priority slice: S1 fills 5 (S1 -> 5 remaining). Pool = 41 - 5 = 36.
 // Pool weights (post-slice sizes): S1=5, S2=30, S3=60, total=95.
@@ -167,7 +167,7 @@ TEST(TopProRataStrategy, SweepsAcrossPriceLevelsWhenLevelExhausted) {
 // levelQuantity(101.0)=20 <= 25 -> fully fills and clears 101.0 via the same
 // "fill all" branch, carrying 5 remaining into 102.0. There levelQuantity(102.0)=10
 // > 5, so it hits the pro-rata branch: the priority slice alone (S6, earliest,
-// qty=5, min(PRIORITY_LOT=5, min(5,5))=5) fully absorbs the remaining 5.
+// qty=5, min(PRIORITY_SLICE=5, min(5,5))=5) fully absorbs the remaining 5.
 // Final state: only S7=5 left resting at 102.0.
 TEST(TopProRataStrategy, SweepsAcrossMultipleLevelsWithPriorityAndPoolFills) {
     auto book = makeProRataBook();

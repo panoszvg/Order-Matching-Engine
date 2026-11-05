@@ -11,7 +11,8 @@ class IOrderBook;
 
 class TopProRataStrategy : public IOrderMatchingStrategy {
 private:
-	const double PRIORITY_LOT = 5.0;
+	// Priority slice size in lots; actual slice quantity is PRIORITY_SLICE_LOTS * lotSize.
+	static constexpr double PRIORITY_SLICE_LOTS = 5.0;
 	void matchBuyOrder(Order& order, IOrderBook& book);
 	void matchSellOrder(Order& order, IOrderBook& book);
 	template<typename BucketT>

@@ -61,7 +61,8 @@ void TopProRataStrategy::matchBuyAgainstBucket(Order& buyOrder, SellBucket& buck
 		} else {
 			auto firstOrderId = ids.front();
 			Order& firstOrder = orders.at(firstOrderId);
-			double tradedQty = std::min(PRIORITY_LOT, std::min(buyOrder.quantity, firstOrder.quantity));
+			const double PRIORITY_SLICE = PRIORITY_SLICE_LOTS * lotSize;
+			double tradedQty = std::min(PRIORITY_SLICE, std::min(buyOrder.quantity, firstOrder.quantity));
 			applyFill(buyOrder, firstOrder, firstOrderId, tradedQty, bucket, orders);
 			levelQuantity -= tradedQty;
 
@@ -129,7 +130,8 @@ void TopProRataStrategy::matchSellAgainstBucket(Order& sellOrder, BuyBucket& buc
 		} else {
 			auto firstOrderId = ids.front();
 			Order& firstOrder = orders.at(firstOrderId);
-			double tradedQty = std::min(PRIORITY_LOT, std::min(sellOrder.quantity, firstOrder.quantity));
+			const double PRIORITY_SLICE = PRIORITY_SLICE_LOTS * lotSize;
+			double tradedQty = std::min(PRIORITY_SLICE, std::min(sellOrder.quantity, firstOrder.quantity));
 			applyFill(sellOrder, firstOrder, firstOrderId, tradedQty, bucket, orders);
 			levelQuantity -= tradedQty;
 
