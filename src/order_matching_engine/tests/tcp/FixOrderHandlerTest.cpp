@@ -31,15 +31,23 @@ std::string computeChecksum(const std::string& body) {
     return buf;
 }
 
+// FIX 4.4 New Order Single (35=D), limit order, with correct BodyLength and CheckSum.
 std::string buildFix(const std::string& symbol, int side, double qty, double price) {
     const std::string soh(1, SOH);
-    std::string body = "8=FIX.4.2" + soh
-                      + "35=D"      + soh
-                      + "55=" + symbol + soh
-                      + "54=" + std::to_string(side)  + soh
-                      + "38=" + std::to_string(qty)   + soh
-                      + "44=" + std::to_string(price) + soh;
-    return body + "10=" + computeChecksum(body) + soh;
+    std::string body = "35=D"      + soh
+                     + "49=CLIENT" + soh
+                     + "56=ENGINE" + soh
+                     + "34=1"      + soh
+                     + "52=20251105-12:00:00.000" + soh
+                     + "11=ORD1"   + soh
+                     + "55=" + symbol + soh
+                     + "54=" + std::to_string(side)  + soh
+                     + "38=" + std::to_string(qty)   + soh
+                     + "40=2"      + soh
+                     + "44=" + std::to_string(price) + soh
+                     + "60=20251105-12:00:00.000" + soh;
+    std::string msg = "8=FIX.4.4" + soh + "9=" + std::to_string(body.size()) + soh + body;
+    return msg + "10=" + computeChecksum(msg) + soh;
 }
 
 } // namespace
@@ -108,13 +116,11 @@ TEST(FixOrderHandler, InvalidChecksum_RejectedBeforeReachingBook) {
     FixOrderHandler handler(books);
     FakeSession session;
 
-    const std::string soh(1, SOH);
-    std::string badChecksum = "8=FIX.4.2" + soh + "35=D" + soh
-                             + "55=TST"    + soh
-                             + "54=1"      + soh
-                             + "38=5.0"    + soh
-                             + "44=100.0"  + soh
-                             + "10=000"    + soh; // wrong checksum
+    std::string badChecksum = buildFix("TST", 1, 5.0, 100.0);
+    auto pos = badChecksum.rfind("10=") + 3;
+    char wrong[4];
+    std::snprintf(wrong, sizeof(wrong), "%03d", (std::stoi(badChecksum.substr(pos, 3)) + 1) % 256);
+    badChecksum.replace(pos, 3, wrong); // wrong checksum
 
     handler.handle(badChecksum, session);
 

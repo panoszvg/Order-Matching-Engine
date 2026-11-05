@@ -34,7 +34,7 @@ def test_order_id_included():
 
 
 def test_begins_with_fix_version():
-    assert to_fix(BASE_ORDER).startswith("8=FIX.4.2")
+    assert to_fix(BASE_ORDER).startswith("8=FIX.4.4\x019=")
 
 
 def test_contains_message_type_new_order():
@@ -52,3 +52,32 @@ def test_checksum_field_present():
 def test_fields_separated_by_soh():
     msg = to_fix(BASE_ORDER)
     assert "\x01" in msg
+
+
+def test_fix44_required_fields_present():
+    tags = {f.split("=", 1)[0] for f in to_fix(BASE_ORDER).strip().split("\x01") if f}
+    assert {"8", "9", "35", "49", "56", "34", "52", "11", "55", "54", "38", "40", "60", "10"} <= tags
+
+
+def test_limit_order_type():
+    assert "\x0140=2\x01" in to_fix(BASE_ORDER)
+
+
+def test_body_length_matches():
+    msg = to_fix(BASE_ORDER).rstrip("\n")
+    header, rest = msg.split("\x019=", 1)
+    length, body = rest.split("\x01", 1)
+    body = body[: body.rindex("10=")]
+    assert int(length) == len(body.encode("utf-8"))
+
+
+def test_checksum_matches():
+    msg = to_fix(BASE_ORDER).rstrip("\n")
+    idx = msg.rindex("10=")
+    assert int(msg[idx + 3 : -1]) == sum(msg[:idx].encode("utf-8")) % 256
+
+
+def test_sequence_number_increments():
+    def seq(msg):
+        return int(next(f for f in msg.split("\x01") if f.startswith("34="))[3:])
+    assert seq(to_fix(BASE_ORDER)) + 1 == seq(to_fix(BASE_ORDER))

@@ -18,6 +18,7 @@ private:
 	string rawMessage;
 
 	bool hasField(int tag) const;
+	bool headerValid() const;
 	bool checksumValid() const;
 	bool requiredFieldsPresent() const;
 

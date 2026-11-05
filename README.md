@@ -40,7 +40,7 @@ Order-Matching-Engine/
 | Port | Purpose |
 | --- | --- |
 | 9000-9001 | JSON order ingress |
-| 9002-9003 | FIX 4.2 order ingress |
+| 9002-9003 | FIX 4.4 order ingress |
 | 9100 | Admin commands (snapshot export/get) |
 | 5000 | Flask REST API |
 

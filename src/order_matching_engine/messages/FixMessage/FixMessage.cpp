@@ -2,6 +2,7 @@
 #include <string>
 #include <sstream>
 #include <iomanip>
+#include <stdexcept>
 
 void FixMessage::populate(const string& message) {
 	rawMessage = message;
@@ -37,6 +38,21 @@ bool FixMessage::hasField(int tag) const {
 	return !getValue(tag).empty();
 }
 
+bool FixMessage::headerValid() const {
+	const string prefix = "8=FIX.4.4" + string(1, SOH) + "9=";
+	if (rawMessage.compare(0, prefix.size(), prefix) != 0) return false;
+
+	auto bodyStart = rawMessage.find(SOH, prefix.size());
+	auto checksumPos = rawMessage.rfind(string(1, SOH) + "10=");
+	if (bodyStart == string::npos || checksumPos == string::npos || checksumPos < bodyStart) return false;
+
+	++bodyStart; // first byte after the BodyLength field
+	if (rawMessage.compare(bodyStart, 3, "35=") != 0) return false;
+
+	auto bodyEnd = checksumPos + 1; // keep the SOH that precedes "10="
+	return getValue(9) == std::to_string(bodyEnd - bodyStart);
+}
+
 bool FixMessage::checksumValid() const {
 	auto checksumPos = rawMessage.rfind(string(1, SOH) + "10=");
 	std::size_t bodyEnd;
@@ -61,21 +77,33 @@ bool FixMessage::checksumValid() const {
 }
 
 bool FixMessage::requiredFieldsPresent() const {
-	static const int requiredTags[] = {8, 35, 55, 54, 38, 44};
+	static const int requiredTags[] = {8, 9, 35, 49, 56, 34, 52, 11, 55, 54, 38, 40, 60};
 	for (int tag : requiredTags) {
 		if (!hasField(tag)) return false;
 	}
+
+	const string orderType = getValue(40);
+	if ((orderType == "2" || orderType == "4") && !hasField(44)) return false;
+	if ((orderType == "3" || orderType == "4") && !hasField(99)) return false;
 	return true;
 }
 
 bool FixMessage::isValid() const {
-	return requiredFieldsPresent() && checksumValid();
+	return headerValid() && getValue(35) == "D" && requiredFieldsPresent() && checksumValid();
 }
 
 Order FixMessage::makeOrder() {
 	try {
+		// Valid FIX, but the engine only matches limit orders
+		if (getValue(40) != "2") {
+			throw std::invalid_argument("Unsupported OrderType '" + getValue(40) + "': only limit orders (40=2) are supported");
+		}
+
 		string  tag_55 = this->getValue(55);
 		int     tag_54 = stoi(this->getValue(54));
+		if (tag_54 != 1 && tag_54 != 2) {
+			throw std::invalid_argument("Unsupported Side '" + getValue(54) + "': only buy (1) and sell (2) are supported");
+		}
 		double  tag_38 = stod(this->getValue(38));
 		double  tag_44 = stod(this->getValue(44));
 
