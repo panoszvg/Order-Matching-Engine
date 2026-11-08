@@ -30,6 +30,7 @@
 *.exe
 *.out
 *.app
+src/order_matching_engine/order_matching_engine
 
 .vscode/
 logs/
