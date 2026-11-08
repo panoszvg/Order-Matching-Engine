@@ -1,5 +1,13 @@
 #include "FixOrderHandler.h"
+#include "JsonResponse.h"
 #include "messages/FixMessage/FixMessage.h"
+
+// Cap how much of a client message is written to the log, so one oversized frame can't flood it.
+static std::string logExcerpt(const std::string& raw) {
+	constexpr std::size_t maxLen = 512;
+	if (raw.size() <= maxLen) return raw;
+	return raw.substr(0, maxLen) + "... (" + std::to_string(raw.size()) + " bytes)";
+}
 
 FixOrderHandler::FixOrderHandler(std::unordered_map<std::string, std::unique_ptr<Book>>& books)
 	: books_(books) {}
@@ -9,9 +17,10 @@ void FixOrderHandler::handle(const std::string& rawMessage, ISession& session) {
 		FixMessage fixMsg;
 		fixMsg.populate(rawMessage);
 
-		if (!fixMsg.isValid()) {
-			logger->error("Invalid FIX message: '{}'", rawMessage);
-			session.send(R"({"status":"error","message":"Invalid FIX message"})");
+		const std::string reason = fixMsg.validate();
+		if (!reason.empty()) {
+			logger->error("Invalid FIX message ({}): '{}'", reason, logExcerpt(rawMessage));
+			sendError(session, "Invalid FIX message: " + reason);
 			return;
 		}
 
@@ -20,18 +29,18 @@ void FixOrderHandler::handle(const std::string& rawMessage, ISession& session) {
 		if (books_.count(order.security)) {
 			try {
 				books_.at(order.security)->insertOrder(order);
-				session.send(R"({"status":"ok","message":"Fix order accepted"})");
+				sendOk(session, "Fix order accepted");
 			} catch (const std::invalid_argument& arg) {
 				logger->error("FIX order rejected: {}", arg.what());
-				session.send(std::string(R"({"status":"error","message":")") + arg.what() + R"("})");
+				sendError(session, arg.what());
 			}
 		} else {
 			logger->error("Unknown security in FIX order: {}", order.security);
-			session.send(R"({"status":"error","message":"Unknown security in FIX order"})");
+			sendError(session, "Unknown security in FIX order");
 		}
-		
+
 	} catch (const std::exception& e) {
-		logger->error("Failed to parse FIX message: {} | Message : '{}'", e.what(), rawMessage);
-		session.send(std::string(R"({"status":"error","message":")") + e.what() + R"("})");
+		logger->error("Failed to parse FIX message: {} | Message : '{}'", e.what(), logExcerpt(rawMessage));
+		sendError(session, e.what());
 	}
 }

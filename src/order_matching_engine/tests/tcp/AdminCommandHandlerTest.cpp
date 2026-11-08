@@ -88,3 +88,29 @@ TEST(AdminCommandHandler, MalformedJson_ReturnsError) {
     auto response = json::parse(session.sent[0]);
     EXPECT_EQ(response["status"], "error");
 }
+
+TEST(AdminCommandHandler, MalformedJson_WithQuote_ResponseIsValidJson) {
+    auto books = makeBooks();
+    AdminCommandHandler handler(books);
+    FakeSession session;
+
+    // nlohmann's parse error echoes the last token read, quote included
+    handler.handle(R"({"type":"GET_SNAPSHOT","symbol":"a\"b)", session);
+
+    ASSERT_EQ(session.sent.size(), 1u);
+    auto response = json::parse(session.sent[0]); // throws if the quote broke the JSON
+    EXPECT_EQ(response["status"], "error");
+}
+
+TEST(AdminCommandHandler, InvalidUtf8_RepliesWithParseableJson) {
+    auto books = makeBooks();
+    AdminCommandHandler handler(books);
+    FakeSession session;
+
+    // json::parse's error echoes the raw 0xFF; dump() must not throw on it
+    EXPECT_NO_THROW(handler.handle("\xff", session));
+
+    ASSERT_EQ(session.sent.size(), 1u);
+    auto response = json::parse(session.sent[0]);
+    EXPECT_EQ(response["status"], "error");
+}

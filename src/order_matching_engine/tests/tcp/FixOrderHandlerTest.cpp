@@ -32,7 +32,8 @@ std::string computeChecksum(const std::string& body) {
 }
 
 // FIX 4.4 New Order Single (35=D), limit order, with correct BodyLength and CheckSum.
-std::string buildFix(const std::string& symbol, int side, double qty, double price) {
+// `extraBody` is appended verbatim, for injecting malformed fields into an otherwise valid frame.
+std::string buildFix(const std::string& symbol, int side, double qty, double price, const std::string& extraBody = "") {
     const std::string soh(1, SOH);
     std::string body = "35=D"      + soh
                      + "49=CLIENT" + soh
@@ -45,7 +46,8 @@ std::string buildFix(const std::string& symbol, int side, double qty, double pri
                      + "38=" + std::to_string(qty)   + soh
                      + "40=2"      + soh
                      + "44=" + std::to_string(price) + soh
-                     + "60=20251105-12:00:00.000" + soh;
+                     + "60=20251105-12:00:00.000" + soh
+                     + extraBody;
     std::string msg = "8=FIX.4.4" + soh + "9=" + std::to_string(body.size()) + soh + body;
     return msg + "10=" + computeChecksum(msg) + soh;
 }
@@ -127,6 +129,86 @@ TEST(FixOrderHandler, InvalidChecksum_RejectedBeforeReachingBook) {
     ASSERT_EQ(session.sent.size(), 1u);
     auto response = json::parse(session.sent[0]);
     EXPECT_EQ(response["status"], "error");
-    EXPECT_EQ(response["message"], "Invalid FIX message");
+    EXPECT_EQ(response["message"], "Invalid FIX message: Garbled message: bad CheckSum");
     EXPECT_DOUBLE_EQ(restingBuyQuantity(*books["TST"]), 0.0);
+}
+
+TEST(FixOrderHandler, ParseError_ReasonIncludedInResponse) {
+    auto books = makeBooks();
+    FixOrderHandler handler(books);
+    FakeSession session;
+
+    const std::string soh(1, SOH);
+    handler.handle(buildFix("TST", 1, 5.0, 100.0, "38=999" + soh), session);
+
+    ASSERT_EQ(session.sent.size(), 1u);
+    auto response = json::parse(session.sent[0]);
+    EXPECT_EQ(response["status"], "error");
+    EXPECT_EQ(response["message"], "Invalid FIX message: Duplicate tag 38");
+    EXPECT_DOUBLE_EQ(restingBuyQuantity(*books["TST"]), 0.0);
+}
+
+TEST(FixOrderHandler, ParseError_ClientTextIsJsonEscaped) {
+    auto books = makeBooks();
+    FixOrderHandler handler(books);
+    FakeSession session;
+
+    const std::string soh(1, SOH);
+    handler.handle(buildFix("TST", 1, 5.0, 100.0, "bad\"token" + soh), session);
+
+    ASSERT_EQ(session.sent.size(), 1u);
+    auto response = json::parse(session.sent[0]); // throws if the quote broke the JSON
+    EXPECT_EQ(response["message"], "Invalid FIX message: Field without '=': 'bad\"token'");
+}
+
+namespace {
+// Replace `from` with `to` in a framed message and recompute the CheckSum.
+// `from` and `to` must be the same length so BodyLength stays correct.
+std::string reframe(std::string raw, const std::string& from, const std::string& to) {
+    raw.replace(raw.find(from), from.size(), to);
+    std::string withoutChecksum = raw.substr(0, raw.rfind("10="));
+    return withoutChecksum + "10=" + computeChecksum(withoutChecksum) + std::string(1, SOH);
+}
+} // namespace
+
+TEST(FixOrderHandler, MakeOrderError_ClientTextIsJsonEscaped) {
+    auto books = makeBooks();
+    FixOrderHandler handler(books);
+    FakeSession session;
+
+    // Parses and validates, then makeOrder rejects 40=" and echoes it in the exception
+    handler.handle(reframe(buildFix("TST", 1, 5.0, 100.0), "40=2", "40=\""), session);
+
+    ASSERT_EQ(session.sent.size(), 1u);
+    auto response = json::parse(session.sent[0]); // throws if the quote broke the JSON
+    EXPECT_EQ(response["status"], "error");
+    EXPECT_EQ(response["message"], "Unsupported OrderType '\"': only limit orders (40=2) are supported");
+}
+
+TEST(FixOrderHandler, InvalidUtf8InOrderType_RepliesWithParseableJson) {
+    auto books = makeBooks();
+    FixOrderHandler handler(books);
+    FakeSession session;
+
+    // Passes validate(), then makeOrder throws "Unsupported OrderType '\xFF'"
+    EXPECT_NO_THROW(handler.handle(reframe(buildFix("TST", 1, 5.0, 100.0), "40=2", "40=\xff"), session));
+
+    ASSERT_EQ(session.sent.size(), 1u);
+    auto response = json::parse(session.sent[0]);
+    EXPECT_EQ(response["status"], "error");
+    EXPECT_EQ(response["message"].get<std::string>().rfind("Unsupported OrderType '", 0), 0u);
+}
+
+TEST(FixOrderHandler, ExcerptSplittingMultibyteChar_KeepsRealReason) {
+    auto books = makeBooks();
+    FixOrderHandler handler(books);
+    FakeSession session;
+
+    // 63 ASCII bytes then a 2-byte "é": the 64-byte excerpt cuts it in half
+    const std::string token = std::string(63, 'x') + "\xc3\xa9" + "tail";
+    handler.handle(buildFix("TST", 1, 5.0, 100.0, token + std::string(1, SOH)), session);
+
+    ASSERT_EQ(session.sent.size(), 1u);
+    auto response = json::parse(session.sent[0]);
+    EXPECT_EQ(response["message"].get<std::string>().rfind("Invalid FIX message: Field without '='", 0), 0u);
 }

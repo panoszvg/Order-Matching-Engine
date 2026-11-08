@@ -1,4 +1,5 @@
 #include "JsonOrderHandler.h"
+#include "JsonResponse.h"
 
 JsonOrderHandler::JsonOrderHandler(std::unordered_map<std::string, std::unique_ptr<Book>>& books)
 	: books_(books) {}
@@ -14,7 +15,7 @@ void JsonOrderHandler::handle(const std::string& rawMessage, ISession& session) 
 
 		if (typeStr != "BUY" && typeStr != "SELL") {
 			logger->error("Unknown type: {}", typeStr);
-			session.send(R"({"status":"error","message":"Unknown type"})");
+			sendError(session, "Unknown type");
 			return;
 		}
 		OrderType type = (typeStr == "BUY") ? BUY : SELL;
@@ -24,18 +25,18 @@ void JsonOrderHandler::handle(const std::string& rawMessage, ISession& session) 
 		if (books_.count(security)) {
 			try {
 				books_.at(security)->insertOrder(*order);
-				session.send(R"({"status":"ok","message":"Order accepted"})");
+				sendOk(session, "Order accepted");
 			} catch (const std::invalid_argument& arg) {
 				logger->error("Order rejected: {}", arg.what());
-				session.send(std::string(R"({"status":"error","message":")") + arg.what() + R"("})");
+				sendError(session, arg.what());
 			}
 		} else {
 			logger->error("Unknown security: {}", security);
-			session.send(R"({"status":"error","message":"Unknown security"})");
+			sendError(session, "Unknown security");
 		}
 
 	} catch (const std::exception& e) {
 		logger->error("Failed to parse or handle message: {}", e.what());
-		session.send(std::string(R"({"status":"error","message":")") + e.what() + R"("})");
+		sendError(session, e.what());
 	}
 }

@@ -1,4 +1,5 @@
 #include "AdminCommandHandler.h"
+#include "JsonResponse.h"
 
 AdminCommandHandler::AdminCommandHandler(std::unordered_map<std::string, std::unique_ptr<Book>>& books)
 	: books_(books) {}
@@ -6,7 +7,7 @@ AdminCommandHandler::AdminCommandHandler(std::unordered_map<std::string, std::un
 Book* AdminCommandHandler::findBook(const std::string& symbol, ISession& session) {
 	auto it = books_.find(symbol);
 	if (it == books_.end()) {
-		session.send(R"({"status":"error","message":"Unknown symbol"})");
+		sendError(session, "Unknown symbol");
 		return nullptr;
 	}
 	return it->second.get();
@@ -32,7 +33,7 @@ void AdminCommandHandler::handle(const std::string& rawMessage, ISession& sessio
 					logger->info("Book was exported and returned");
 				}
 			} catch (const std::exception& e) {
-				session.send(std::string(R"({"status":"error","message":"Exception: )") + e.what() + R"("})");
+				sendError(session, std::string("Exception: ") + e.what());
 				logger->error("Failed export book: {}", e.what());
 			}
 		}
@@ -42,19 +43,19 @@ void AdminCommandHandler::handle(const std::string& rawMessage, ISession& sessio
 				Book* book = findBook(symbol, session);
 				if (book) {
 					book->exportSnapshot();
-					session.send(R"({"status":"ok","message":"Exported snapshot for )" + symbol + R"("})");
+					sendOk(session, "Exported snapshot for " + symbol);
 					logger->info("Book was exported");
 				}
 			} catch (const std::exception& e) {
-				session.send(std::string(R"({"status":"error","message":"Exception: )") + e.what() + R"("})");
+				sendError(session, std::string("Exception: ") + e.what());
 				logger->error("Failed export book: {}", e.what());
 			}
 		} else {
-			session.send(R"({"status":"error","message":"Unknown command"})");
+			sendError(session, "Unknown command");
 		}
 
 	} catch (const std::exception& e) {
-		session.send(std::string(R"({"status":"error","message":"Invalid JSON or command: )") + e.what() + R"("})");
+		sendError(session, std::string("Invalid JSON or command: ") + e.what());
 		logger->error("Failed to parse or handle message: {}", e.what());
 	}
 }
