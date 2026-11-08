@@ -11,9 +11,16 @@ VALID_ORDER = {
 }
 
 
-def _mock_socket(mock_create_conn):
-    """Attach a mock socket to the create_connection context-manager."""
+OK_REPLY = b'{"status":"ok","message":"Fix order accepted"}\n'
+
+
+def _mock_socket(mock_create_conn, *replies):
+    """Attach a mock socket to the create_connection context-manager.
+
+    `replies` are the successive chunks recv() returns; defaults to the engine's accept reply.
+    """
     mock_sock = MagicMock()
+    mock_sock.recv.side_effect = list(replies or [OK_REPLY])
     mock_create_conn.return_value.__enter__.return_value = mock_sock
     mock_create_conn.return_value.__exit__.return_value = False
     return mock_sock
@@ -64,6 +71,40 @@ def test_fix_message_sent_to_socket(mock_conn, client):
     assert "35=D" in sent_str
 
 
+@patch("order_router.socket.create_connection")
+def test_engine_message_included(mock_conn, client):
+    _mock_socket(mock_conn)
+    data = client.post("/api/send-order", json=VALID_ORDER).get_json()
+    assert data["message"] == "Fix order accepted"
+
+
+@patch("order_router.socket.create_connection")
+def test_reply_split_across_recv_calls_is_reassembled(mock_conn, client):
+    _mock_socket(mock_conn, b'{"status":"ok",', b'"message":"Fix order accepted"}\n')
+    resp = client.post("/api/send-order", json=VALID_ORDER)
+    assert resp.status_code == 200
+    assert resp.get_json()["message"] == "Fix order accepted"
+
+
+# ── Engine rejections ─────────────────────────────────────────────────────────
+
+@patch("order_router.socket.create_connection")
+def test_engine_rejection_returns_400(mock_conn, client):
+    _mock_socket(mock_conn, b'{"status":"error","message":"Unknown security in FIX order"}\n')
+    resp = client.post("/api/send-order", json=VALID_ORDER)
+    assert resp.status_code == 400
+    data = resp.get_json()
+    assert data["status"] == "error"
+    assert data["message"] == "Unknown security in FIX order"
+
+
+@patch("order_router.socket.create_connection")
+def test_engine_rejection_does_not_echo_order(mock_conn, client):
+    _mock_socket(mock_conn, b'{"status":"error","message":"Invalid FIX message"}\n')
+    data = client.post("/api/send-order", json=VALID_ORDER).get_json()
+    assert "received" not in data
+
+
 # ── Error cases ───────────────────────────────────────────────────────────────
 
 @patch("order_router.socket.create_connection")
@@ -80,6 +121,35 @@ def test_socket_failure_response_status_is_error(mock_conn, client):
     data = resp.get_json()
     assert data["status"] == "error"
     assert "message" in data
+
+
+@patch("order_router.socket.create_connection")
+def test_engine_closes_without_reply_returns_502(mock_conn, client):
+    _mock_socket(mock_conn, b"")
+    resp = client.post("/api/send-order", json=VALID_ORDER)
+    assert resp.status_code == 502
+
+
+@patch("order_router.socket.create_connection")
+def test_engine_timeout_returns_502(mock_conn, client):
+    mock_sock = _mock_socket(mock_conn)
+    mock_sock.recv.side_effect = TimeoutError("timed out")
+    resp = client.post("/api/send-order", json=VALID_ORDER)
+    assert resp.status_code == 502
+
+
+@patch("order_router.socket.create_connection")
+def test_non_json_reply_returns_502(mock_conn, client):
+    _mock_socket(mock_conn, b"not json\n")
+    resp = client.post("/api/send-order", json=VALID_ORDER)
+    assert resp.status_code == 502
+
+
+@patch("order_router.socket.create_connection")
+def test_connects_with_timeout(mock_conn, client):
+    _mock_socket(mock_conn)
+    client.post("/api/send-order", json=VALID_ORDER)
+    assert mock_conn.call_args.kwargs["timeout"] > 0
 
 
 def test_no_json_body_returns_400(client):
