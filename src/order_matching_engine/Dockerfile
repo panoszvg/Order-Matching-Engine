@@ -1,5 +1,5 @@
 # Stage 1: Build
-FROM debian:bullseye AS build
+FROM debian:bookworm AS build
 
 RUN apt-get update && apt-get install -y \
     g++ make \
@@ -13,10 +13,10 @@ WORKDIR /app
 RUN make clean && make
 
 # Stage 2: Runtime
-FROM debian:bullseye-slim AS runtime
+FROM debian:bookworm-slim AS runtime
 
 RUN apt-get update && apt-get install -y \
-    libspdlog-dev libboost-system-dev libfmt7 \
+    libspdlog-dev libboost-system-dev libfmt9 \
 	procps \
     && rm -rf /var/lib/apt/lists/*
 
