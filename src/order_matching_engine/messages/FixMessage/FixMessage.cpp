@@ -3,6 +3,7 @@
 #include <sstream>
 #include <iomanip>
 #include <stdexcept>
+#include <limits>
 
 // FIX 4.4 StandardHeader fields. 8, 9, 35 must come first (checked in headerValid);
 // the rest may appear in any order before the body.
@@ -28,41 +29,134 @@ static bool isHeaderTag(int tag) {
 	}
 }
 
-void FixMessage::populate(const string& message) {
-	rawMessage = message;
+// Tags the engine reads: header, trailer, and the NewOrderSingle fields used by
+// isValid()/makeOrder(). A repeat of one of these is ambiguous and is rejected.
+// Any other tag may legitimately repeat (FIX repeating groups, e.g. Parties 448/447/452);
+// the engine ignores those, so only the first occurrence is kept.
+static bool isSignificantTag(int tag) {
+	if (tag == 10 || isHeaderTag(tag)) return true;
+	switch (tag) {
+		case 11:  // ClOrdID
+		case 38:  // OrderQty
+		case 40:  // OrdType
+		case 44:  // Price
+		case 54:  // Side
+		case 55:  // Symbol
+		case 60:  // TransactTime
+		case 99:  // StopPx
+			return true;
+		default:
+			return false;
+	}
+}
 
-	std::stringstream ss(message);
+enum class TagParse { Ok, Invalid, OutOfRange };
+
+// A FIX tag is a positive integer written in plain digits: no sign, whitespace or leading zero.
+// Stricter than std::stoi, which would accept " 58", "+38" and "038" as aliases.
+static TagParse parseTag(const string& s, int& tag) {
+	constexpr long long maxTag = std::numeric_limits<int>::max();
+	if (s.empty() || s[0] == '0') return TagParse::Invalid;
+	long long value = 0;
+	for (char c : s) {
+		if (c < '0' || c > '9') return TagParse::Invalid;
+		if (value <= maxTag) value = value * 10 + (c - '0'); // stop growing once out of range
+	}
+	if (value > maxTag) return TagParse::OutOfRange;
+	tag = static_cast<int>(value);
+	return TagParse::Ok;
+}
+
+// Client text quoted in an error reason is capped, so an oversized field isn't echoed back in full.
+static string excerpt(const string& s) {
+	constexpr std::size_t maxLen = 64;
+	if (s.size() <= maxLen) return s;
+	return s.substr(0, maxLen) + "...";
+}
+
+// populate() files every tag here, so lookups only ever need to search this one section
+const FixMap& FixMessage::sectionFor(int tag) const {
+	if (tag == 10) return trailer;
+	if (isHeaderTag(tag)) return header;
+	return body;
+}
+
+void FixMessage::populate(const string& message) {
+	// Start from a clean slate so a reused object doesn't mix in a previous message
+	header = FixMap();
+	body = FixMap();
+	trailer = FixMap();
+	parseError.clear();
+
+	// Line-oriented clients (telnet, Windows, Python) may leave a trailing '\r' or '\n'
+	// after the final SOH; it is transport framing, not part of the FIX message.
+	rawMessage = message;
+	while (!rawMessage.empty() && (rawMessage.back() == '\r' || rawMessage.back() == '\n')) {
+		rawMessage.pop_back();
+	}
+
+	std::stringstream ss(rawMessage);
 	string token;
+
+	// Keep only the first problem as the reason for rejection and count the rest,
+	// so a frame full of bad fields produces one log line instead of thousands
+	std::size_t errorCount = 0;
+	auto recordError = [this, &errorCount](const string& reason) {
+		if (errorCount++ == 0) parseError = reason;
+	};
 
 	while (std::getline(ss, token, SOH)) {
 		auto equalPos = token.find('=');
-		if (equalPos != string::npos) {
-			string tagStr = token.substr(0, equalPos);
-			string value = token.substr(equalPos + 1);
-
-			try {
-				int tag = std::stoi(tagStr);
-
-				if (tag == 10) {
-					trailer.addField(tag, value);
-				} else if (isHeaderTag(tag)) {
-					header.addField(tag, value);
-				} else {
-					body.addField(tag, value);
-				}
-
-			} catch (const std::invalid_argument& e) {
-				logger->error("Invalid tag in FIX field: '{}'. Skipping.", tagStr);
-			} catch (const std::out_of_range& e) {
-				logger->error("Out of range tag in FIX field: '{}'. Skipping.", tagStr);
-			}
+		if (equalPos == string::npos) {
+			recordError("Field without '=': '" + excerpt(token) + "'");
+			continue;
 		}
+
+		string tagStr = token.substr(0, equalPos);
+		string value = token.substr(equalPos + 1);
+
+		int tag = 0;
+		switch (parseTag(tagStr, tag)) {
+			case TagParse::Ok:
+				break;
+			case TagParse::Invalid:
+				recordError("Invalid tag '" + excerpt(tagStr) + "'");
+				continue;
+			case TagParse::OutOfRange:
+				recordError("Out of range tag '" + excerpt(tagStr) + "'");
+				continue;
+		}
+
+		if (value.empty()) {
+			recordError("Empty value for tag " + std::to_string(tag));
+			continue;
+		}
+
+		// Same rule as sectionFor(); a tag always maps to one section, so only that one can hold a duplicate
+		FixMap& section = (tag == 10) ? trailer : (isHeaderTag(tag) ? header : body);
+		if (section.getFields().count(tag)) {
+			if (isSignificantTag(tag)) {
+				recordError("Duplicate tag " + std::to_string(tag));
+			}
+			continue; // keep the first occurrence
+		}
+
+		section.addField(tag, value);
 	}
 
+	if (errorCount == 1) {
+		logger->error("Malformed FIX message: {}", parseError);
+	} else if (errorCount > 1) {
+		logger->error("Malformed FIX message: {} (and {} more problems)", parseError, errorCount - 1);
+	}
+}
+
+const string& FixMessage::getParseError() const {
+	return parseError;
 }
 
 bool FixMessage::hasField(int tag) const {
-	return !getValue(tag).empty();
+	return sectionFor(tag).getFields().count(tag) > 0;
 }
 
 bool FixMessage::headerValid() const {
@@ -82,15 +176,8 @@ bool FixMessage::headerValid() const {
 
 bool FixMessage::checksumValid() const {
 	auto checksumPos = rawMessage.rfind(string(1, SOH) + "10=");
-	std::size_t bodyEnd;
-
-	if (checksumPos != string::npos) {
-		bodyEnd = checksumPos + 1; // keep the SOH that precedes "10="
-	} else if (rawMessage.rfind("10=", 0) == 0) {
-		bodyEnd = 0; // message starts with the checksum field
-	} else {
-		return false; // no checksum field present
-	}
+	if (checksumPos == string::npos) return false; // no checksum field present
+	auto bodyEnd = checksumPos + 1; // keep the SOH that precedes "10="
 
 	unsigned int sum = 0;
 	for (std::size_t i = 0; i < bodyEnd; ++i) {
@@ -103,20 +190,32 @@ bool FixMessage::checksumValid() const {
 	return getValue(10) == expected.str();
 }
 
-bool FixMessage::requiredFieldsPresent() const {
+int FixMessage::firstMissingField() const {
 	static const int requiredTags[] = {8, 9, 35, 49, 56, 34, 52, 11, 55, 54, 38, 40, 60};
 	for (int tag : requiredTags) {
-		if (!hasField(tag)) return false;
+		if (!hasField(tag)) return tag;
 	}
 
 	const string orderType = getValue(40);
-	if ((orderType == "2" || orderType == "4") && !hasField(44)) return false;
-	if ((orderType == "3" || orderType == "4") && !hasField(99)) return false;
-	return true;
+	if ((orderType == "2" || orderType == "4") && !hasField(44)) return 44;
+	if ((orderType == "3" || orderType == "4") && !hasField(99)) return 99;
+	return 0;
+}
+
+string FixMessage::validate() const {
+	if (!headerValid())   return "Garbled message: bad BeginString, BodyLength or field order";
+	if (!checksumValid()) return "Garbled message: bad CheckSum";
+	if (!parseError.empty()) return parseError;
+
+	const string msgType = getValue(35);
+	if (msgType != "D") return "Unsupported MsgType '" + excerpt(msgType) + "': only NewOrderSingle (35=D) is supported";
+
+	if (int missing = firstMissingField()) return "Missing required field " + std::to_string(missing);
+	return "";
 }
 
 bool FixMessage::isValid() const {
-	return headerValid() && getValue(35) == "D" && requiredFieldsPresent() && checksumValid();
+	return validate().empty();
 }
 
 Order FixMessage::makeOrder() {
@@ -142,20 +241,19 @@ Order FixMessage::makeOrder() {
 }
 
 string FixMessage::getValue(int tag) const {
-	for (const FixMap* section : {&header, &body, &trailer}) {
-		const auto& fields = section->getFields();
-		auto it = fields.find(tag);
-		if (it != fields.end()) return it->second.getValue();
-	}
-	return "";
+	const auto& fields = sectionFor(tag).getFields();
+	auto it = fields.find(tag);
+	return it != fields.end() ? it->second.getValue() : "";
 }
 
 void FixMessage::print() {
-	for (const FixMap* section : {&header, &body, &trailer}) {
-		for (const auto& [tag, field] : section->getFields()) {
+	auto printSection = [this](const FixMap& section) {
+		for (const auto& [tag, field] : section.getFields()) {
 			logger->info("Tag {} = {}", tag, field.getValue());
 		}
-	}
+	};
+	printSection(header);
+	printSection(body);
+	printSection(trailer);
 }
-
 
