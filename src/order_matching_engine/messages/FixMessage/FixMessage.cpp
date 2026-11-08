@@ -4,12 +4,35 @@
 #include <iomanip>
 #include <stdexcept>
 
+// FIX 4.4 StandardHeader fields. 8, 9, 35 must come first (checked in headerValid);
+// the rest may appear in any order before the body.
+static bool isHeaderTag(int tag) {
+	switch (tag) {
+		case 8:   // BeginString
+		case 9:   // BodyLength
+		case 35:  // MsgType
+		case 49:  // SenderCompID
+		case 56:  // TargetCompID
+		case 34:  // MsgSeqNum
+		case 52:  // SendingTime
+		case 43:  // PossDupFlag
+		case 97:  // PossResend
+		case 115: // OnBehalfOfCompID
+		case 128: // DeliverToCompID
+		case 122: // OrigSendingTime
+		case 50:  // SenderSubID
+		case 57:  // TargetSubID
+			return true;
+		default:
+			return false;
+	}
+}
+
 void FixMessage::populate(const string& message) {
 	rawMessage = message;
 
 	std::stringstream ss(message);
 	string token;
-	FixMap* currentMap = &header;
 
 	while (std::getline(ss, token, SOH)) {
 		auto equalPos = token.find('=');
@@ -20,9 +43,13 @@ void FixMessage::populate(const string& message) {
 			try {
 				int tag = std::stoi(tagStr);
 
-				if (tag == 10) currentMap = &trailer;
-				currentMap->addField(tag, value);
-				if (tag == 35) currentMap = &body;
+				if (tag == 10) {
+					trailer.addField(tag, value);
+				} else if (isHeaderTag(tag)) {
+					header.addField(tag, value);
+				} else {
+					body.addField(tag, value);
+				}
 
 			} catch (const std::invalid_argument& e) {
 				logger->error("Invalid tag in FIX field: '{}'. Skipping.", tagStr);
