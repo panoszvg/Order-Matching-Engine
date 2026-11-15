@@ -66,7 +66,7 @@ void TopProRataStrategy::matchBuyAgainstBucket(Order& buyOrder, SellBucket& buck
 			applyFill(buyOrder, firstOrder, firstOrderId, tradedQty, bucket, orders);
 			levelQuantity -= tradedQty;
 
-			if (firstOrder.fulfilled == FULLY_FULFILLED) {
+			if (!orders.count(firstOrderId)) {
 				ids.pop_front();
 			}
 
@@ -135,7 +135,7 @@ void TopProRataStrategy::matchSellAgainstBucket(Order& sellOrder, BuyBucket& buc
 			applyFill(sellOrder, firstOrder, firstOrderId, tradedQty, bucket, orders);
 			levelQuantity -= tradedQty;
 
-			if (firstOrder.fulfilled == FULLY_FULFILLED) {
+			if (!orders.count(firstOrderId)) {
 				ids.pop_front();
 			}
 

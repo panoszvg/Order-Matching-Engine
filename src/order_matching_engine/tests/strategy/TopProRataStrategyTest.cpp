@@ -217,6 +217,46 @@ TEST(TopProRataStrategy, SweepsAcrossMultipleLevelsWithPriorityAndPoolFills) {
     EXPECT_EQ(book->getOrders().at(s7.id).fulfilled, NOT_FULFILLED);
 }
 
+// Resting sells S1=5 (earliest), S2=30 at 100.0 (total=35). Incoming BUY=20.
+// Priority slice: S1 fills min(5, min(20, 5))=5 and is fully filled, so it's removed.
+// Pool: the remaining 15 all goes to S2 (only order left at the level) -> S2 left with 15.
+TEST(TopProRataStrategy, PrioritySliceFullyFillsFirstOrder_RestGoesToPool) {
+    auto book = makeProRataBook();
+
+    auto s1 = makeTimedOrder("TST", SELL, 5.0, 100.0, 1000);
+    auto s2 = makeTimedOrder("TST", SELL, 30.0, 100.0, 2000);
+    book->insertOrder(s1);
+    book->insertOrder(s2);
+
+    auto buy = Order("TST", BUY, 20.0, 100.0);
+    book->insertOrder(buy);
+
+    EXPECT_EQ(book->getOrders().count(buy.id), 0u);  // fully filled -> erased
+    EXPECT_EQ(book->getOrders().count(s1.id), 0u);
+    ASSERT_EQ(book->getOrders().count(s2.id), 1u);
+    EXPECT_DOUBLE_EQ(book->getOrders().at(s2.id).quantity, 15.0);
+}
+
+// Sell-side mirror: resting buys B1=5 (earliest), B2=30 at 100.0 (total=35). Incoming SELL=20.
+// Priority slice: B1 fills 5 and is fully filled, so it's removed.
+// Pool: the remaining 15 all goes to B2 -> B2 left with 15.
+TEST(TopProRataStrategy, Sell_PrioritySliceFullyFillsFirstOrder_RestGoesToPool) {
+    auto book = makeProRataBook();
+
+    auto b1 = makeTimedOrder("TST", BUY, 5.0, 100.0, 1000);
+    auto b2 = makeTimedOrder("TST", BUY, 30.0, 100.0, 2000);
+    book->insertOrder(b1);
+    book->insertOrder(b2);
+
+    auto sell = Order("TST", SELL, 20.0, 100.0);
+    book->insertOrder(sell);
+
+    EXPECT_EQ(book->getOrders().count(sell.id), 0u);  // fully filled -> erased
+    EXPECT_EQ(book->getOrders().count(b1.id), 0u);
+    ASSERT_EQ(book->getOrders().count(b2.id), 1u);
+    EXPECT_DOUBLE_EQ(book->getOrders().at(b2.id).quantity, 15.0);
+}
+
 TEST(TopProRataStrategy, NoCross_NoMatch) {
     auto book = makeProRataBook();
     auto sell = Order("TST", SELL, 5.0, 101.0);
