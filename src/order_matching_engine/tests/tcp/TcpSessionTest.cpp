@@ -28,15 +28,23 @@ public:
     }
 };
 
+class EchoHandler : public IMessageHandler {
+public:
+    void handle(const std::string& rawMessage, ISession& session) override {
+        session.send(rawMessage);
+    }
+};
+
 // Connects a client to a TcpSession over localhost, with both on one io_context.
 // Sends all requests in a single write, then collects reply lines until expectedLines
 // have arrived, the connection fails, or the timeout passes.
-std::vector<std::string> sendAndCollectReplies(const std::vector<std::string>& requests, std::size_t expectedLines) {
+std::vector<std::string> sendAndCollectReplies(const std::vector<std::string>& requests, std::size_t expectedLines,
+                                               std::shared_ptr<IMessageHandler> handler) {
     asio::io_context io;
     tcp::acceptor acceptor(io, tcp::endpoint(asio::ip::address_v4::loopback(), 0));
     tcp::socket client(io);
     client.connect(acceptor.local_endpoint());
-    std::make_shared<TcpSession>(acceptor.accept(), std::make_shared<LargeReplyHandler>())->start();
+    std::make_shared<TcpSession>(acceptor.accept(), handler)->start();
 
     std::string out;
     for (const auto& request : requests) out += request + '\n';
@@ -66,7 +74,7 @@ std::vector<std::string> sendAndCollectReplies(const std::vector<std::string>& r
 // Also catches send() writing from a freed buffer, but only when built with -fsanitize=address.
 TEST(TcpSession, PipelinedRequests_RepliesArriveWholeAndInOrder) {
     std::vector<std::string> requests = {"0", "1", "2", "3", "4"};
-    auto lines = sendAndCollectReplies(requests, requests.size());
+    auto lines = sendAndCollectReplies(requests, requests.size(), std::make_shared<LargeReplyHandler>());
 
     ASSERT_EQ(lines.size(), requests.size());
     for (std::size_t i = 0; i < requests.size(); ++i) {
@@ -75,4 +83,18 @@ TEST(TcpSession, PipelinedRequests_RepliesArriveWholeAndInOrder) {
         EXPECT_EQ(lines[i].size(), expected.size()) << "reply " << i;
         EXPECT_EQ(lines[i].substr(0, 16), expected.substr(0, 16)) << "reply " << i;
     }
+}
+
+TEST(TcpSession, CrLfLineEnding_CrIsRemoved) {
+    auto lines = sendAndCollectReplies({"abc\r"}, 1, std::make_shared<EchoHandler>());
+
+    ASSERT_EQ(lines.size(), 1u);
+    EXPECT_EQ(lines[0], "abc");
+}
+
+TEST(TcpSession, MessageOverSizeLimit_IsNotHandled) {
+    std::string tooLong(TcpSession::kMaxMessageSize + 1, 'x');
+    auto lines = sendAndCollectReplies({tooLong}, 1, std::make_shared<EchoHandler>());
+
+    EXPECT_TRUE(lines.empty());
 }

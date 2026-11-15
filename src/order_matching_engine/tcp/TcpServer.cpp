@@ -3,6 +3,8 @@
 #include "Logger.h"
 #include <chrono>
 
+using boost::asio::ip::tcp;
+
 namespace {
 
 // How long to wait before accepting again after an error. Errors like running out of file

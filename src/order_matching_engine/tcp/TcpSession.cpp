@@ -13,12 +13,18 @@ void TcpSession::read() {
 				std::istream input(&self->buffer_);
 				std::string message;
 				std::getline(input, message);
+				if (!message.empty() && message.back() == '\r') {
+					message.pop_back(); // Line ended with "\r\n"
+				}
 
 				if (self->handler_) {
 					self->handler_->handle(message, *self);
 				}
 
 				self->read(); // Continue reading
+			} else if (ec == boost::asio::error::not_found) {
+				// No more reads, so the session closes once any pending replies are written
+				netLogger->error("Message longer than {} bytes, disconnecting client", kMaxMessageSize);
 			} else {
 				netLogger->info("Client disconnected: {}", ec.message());
 			}
