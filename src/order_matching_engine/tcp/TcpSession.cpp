@@ -26,12 +26,31 @@ void TcpSession::read() {
 	);
 }
 
+// Only one async_write may be in progress on a socket at a time, so replies are queued
+// and written one after another.
 void TcpSession::send(const std::string& message) {
+	bool writing = !writeQueue_.empty();
+	writeQueue_.push_back(message + '\n');
+	if (!writing) {
+		write();
+	}
+}
+
+void TcpSession::write() {
 	auto self = shared_from_this();
-	boost::asio::async_write(socket_, boost::asio::buffer(message + '\n'),
+	boost::asio::async_write(socket_, boost::asio::buffer(writeQueue_.front()),
 		[self](boost::system::error_code ec, std::size_t) {
 			if (ec) {
 				netLogger->error("Send failed: {}", ec.message());
+				// Drop unsent replies and close, which also ends the pending read and the session
+				self->writeQueue_.clear();
+				boost::system::error_code ignored;
+				self->socket_.close(ignored);
+				return;
+			}
+			self->writeQueue_.pop_front();
+			if (!self->writeQueue_.empty()) {
+				self->write();
 			}
 		});
 }
