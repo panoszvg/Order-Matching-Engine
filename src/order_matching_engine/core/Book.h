@@ -37,9 +37,9 @@ private:
 public:
 	explicit Book(unique_ptr<IOrderMatchingStrategy> matcher, unique_ptr<Security> security);
 
-	void insertOrder(Order& order);
-	void cancelOrder(const string& orderId);
-	void modifyOrder(const string& orderId, double newQty, double newPrice);
+	void insertOrder(Order& order) override;
+	void cancelOrder(const string& orderId) override;
+	void modifyOrder(const string& orderId, double newQty, double newPrice) override;
 	void setMatchingStrategy(std::unique_ptr<IOrderMatchingStrategy> newMatcher);
 	void setSecurity(std::unique_ptr<Security> security);
 	Order& orderLookup(const string& orderId) override;
