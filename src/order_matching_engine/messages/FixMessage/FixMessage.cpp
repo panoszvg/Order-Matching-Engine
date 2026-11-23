@@ -88,12 +88,7 @@ void FixMessage::populate(const string& message) {
 	trailer = FixMap();
 	parseError.clear();
 
-	// Line-oriented clients (telnet, Windows, Python) may leave a trailing '\r' or '\n'
-	// after the final SOH; it is transport framing, not part of the FIX message.
 	rawMessage = message;
-	while (!rawMessage.empty() && (rawMessage.back() == '\r' || rawMessage.back() == '\n')) {
-		rawMessage.pop_back();
-	}
 
 	std::stringstream ss(rawMessage);
 	string token;

@@ -19,8 +19,9 @@ unsigned short portOf(const tcp::acceptor& acceptor) {
 
 } // namespace
 
-TcpServer::TcpServer(boost::asio::io_context& io_context, const std::vector<int>& ports, std::shared_ptr<IMessageHandler> handler)
-	: io_context_(io_context), handler_(std::move(handler)) {
+TcpServer::TcpServer(boost::asio::io_context& io_context, const std::vector<int>& ports, std::shared_ptr<IMessageHandler> handler,
+	std::shared_ptr<const IFramer> framer)
+	: io_context_(io_context), handler_(std::move(handler)), framer_(std::move(framer)) {
 	for (int port : ports) {
 		auto acceptor = std::make_unique<tcp::acceptor>(io_context_, tcp::endpoint(tcp::v4(), port));
 		netLogger->info("Server listening on port {}...", port);
@@ -52,7 +53,7 @@ void TcpServer::startAccept(tcp::acceptor& acceptor) {
 		}
 
 		netLogger->info("Client connected on port {}.", portOf(acceptor));
-		std::make_shared<TcpSession>(std::move(socket), handler_)->start();
+		std::make_shared<TcpSession>(std::move(socket), handler_, framer_)->start();
 		startAccept(acceptor);
 	});
 }

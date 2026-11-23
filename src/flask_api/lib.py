@@ -25,4 +25,4 @@ def to_fix(order):
     body = '\x01'.join(fields) + '\x01'
     message = f"8=FIX.4.4\x019={len(body.encode('utf-8'))}\x01" + body
     checksum = sum(message.encode('utf-8')) % 256
-    return message + f"10={checksum:03d}" + '\x01' + '\n'
+    return message + f"10={checksum:03d}" + '\x01'

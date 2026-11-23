@@ -321,12 +321,11 @@ TEST(FixMessage, IsValid_StopLimitWithoutStopPx_ReturnsFalse) {
 
 // ── transport framing ────────────────────────────────────────────────────────
 
-TEST(FixMessage, TrailingCrlf_IsIgnored) {
-    // TcpSession strips '\n' but leaves '\r' from CRLF clients
+TEST(FixMessage, BytesAfterCheckSum_AreRejected) {
     std::string raw = buildFix("BTC", 1, 5.0, 100.0);
-    EXPECT_EQ(parseError(raw + "\r"), "");
-    EXPECT_TRUE(isValid(raw + "\r"));
-    EXPECT_TRUE(isValid(raw + "\r\n"));
+    EXPECT_TRUE(isValid(raw));
+    EXPECT_FALSE(isValid(raw + "\r"));
+    EXPECT_FALSE(isValid(raw + "\r\n"));
 }
 
 // ── repeating groups ─────────────────────────────────────────────────────────

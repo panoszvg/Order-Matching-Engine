@@ -1,4 +1,4 @@
-import sys, os
+import re, sys, os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from lib import to_fix
@@ -41,8 +41,11 @@ def test_contains_message_type_new_order():
     assert "35=D" in to_fix(BASE_ORDER)
 
 
-def test_ends_with_newline():
-    assert to_fix(BASE_ORDER).endswith("\n")
+def test_ends_with_checksum_and_no_newline():
+    # The engine frames FIX by BodyLength; a trailing '\n' would be read as the start of the next message
+    msg = to_fix(BASE_ORDER)
+    assert re.fullmatch(r".*\x0110=\d{3}\x01", msg, re.DOTALL)
+    assert "\n" not in msg
 
 
 def test_checksum_field_present():

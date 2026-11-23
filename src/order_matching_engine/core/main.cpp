@@ -10,6 +10,8 @@
 #include "tcp/FixOrderHandler.h"
 #include "tcp/JsonOrderHandler.h"
 #include "tcp/AdminCommandHandler.h"
+#include "tcp/FixFramer.h"
+#include "tcp/LineFramer.h"
 #include <boost/asio/signal_set.hpp>
 #include <iostream>
 #include <string>
@@ -64,9 +66,12 @@ int main(int argc, char* argv[]) {
 	auto fixHandler  = std::make_shared<FixOrderHandler>(books);
 	auto adminCommandHandler = std::make_shared<AdminCommandHandler>(books);
 
-	TcpServer jsonServer(io_context, {9000, 9001}, jsonHandler);
-	TcpServer fixServer(io_context,  {9002, 9003}, fixHandler);
-	TcpServer adminServer(io_context, {9100}, adminCommandHandler);
+	auto lineFramer = std::make_shared<LineFramer>();
+	auto fixFramer  = std::make_shared<FixFramer>();
+
+	TcpServer jsonServer(io_context, {9000, 9001}, jsonHandler, lineFramer);
+	TcpServer fixServer(io_context,  {9002, 9003}, fixHandler, fixFramer);
+	TcpServer adminServer(io_context, {9100}, adminCommandHandler, lineFramer);
 
 	jsonServer.run();
 	fixServer.run();
